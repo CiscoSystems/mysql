@@ -32,6 +32,7 @@ mysqldump $ROOTARGS --all-databases --single-transaction |gzip> $backup
 dumpurl=http://$ip/$dumpurl
 echo Stopping slave...
 mysql $ROOTARGS -e "STOP SLAVE"
+mysql $ROOTARGS -e "RESET SLAVE"
 echo Importing $dumpurl into MySQL
 curl --silent --show-error $dumpurl |zcat| mysql $ROOTARGS
 # Root pw gets overwritten by import

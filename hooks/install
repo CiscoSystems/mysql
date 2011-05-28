@@ -32,6 +32,7 @@ set \$mysqld/server_id $unit_id
 set \$mysqld/log_bin /var/log/mysql/mysql-bin.log
 set \$mysqld/default_storage_engine InnoDB
 set \$mysqld/bind-address 0.0.0.0
+set \$mysqld/skip-name-resolve ""
 save
 EOF
 
