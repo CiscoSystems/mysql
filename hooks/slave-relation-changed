@@ -65,3 +65,4 @@ if [ -z "$serverid" -o "$serverid" -lt 100000 ] ; then
 fi
 mysql $ROOTARGS -e "START SLAVE"
 mysql $ROOTARGS -e "SHOW SLAVE STATUS"
+touch /var/lib/ensemble/i.am.a.slave

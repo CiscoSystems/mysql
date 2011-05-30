@@ -1,0 +1,91 @@
+#!/usr/bin/env python
+
+from common import get_db_cursor, database_name, user, lastrun_path
+
+import urllib
+import subprocess
+import os
+import sys
+import string
+import random
+import pickle
+
+cursor = get_db_cursor()
+
+def runsql(sql):
+	print "[%s]" % sql
+	cursor.execute(sql)
+
+# Find existing databases
+cursor.execute("show databases")
+databases = [i[0] for i in cursor.fetchall()]
+
+slave = os.path.exists('/var/lib/ensemble/i.am.a.slave')
+
+# Determine if we need to create a new database
+if not slave and database_name in databases:
+  print "database exists, assuming configuration has happened already"
+  sys.exit(0)
+
+# Database is created just before relation-set in case other steps fail
+
+# Create database user and grant access
+service_password = "".join(random.sample(string.letters, 10))
+
+if slave:
+    cursor.execute("select Repl_client_priv from mysql.user where user='%s' limit 1" % user)
+    priv = cursor.fetchone()[0]
+    if priv == 'Y':
+      print "Already have slave privilegs for %s" % user
+      sys.exit(0)
+    runsql(
+        "grant replication client on *.* to `%s` identified by '%s'"  % (
+        user,
+        service_password))
+    runsql(
+        "revoke all on `%s`.* from `%s`"  % (
+        database_name,   
+        user))
+    runsql(
+        "grant select on `%s`.* to `%s`"  % (
+        database_name,   
+        user))
+else:
+	runsql(
+	    "grant all on `%s`.* to `%s` identified by '%s'" % (
+		database_name,
+		user,
+		service_password))
+
+hostname = urllib.urlopen(
+    "http://169.254.169.254/latest/meta-data/local-hostname").read()
+
+print "setting values"
+print "host", hostname
+print "database", database_name
+print "user", user
+print "password", service_password
+print "slave", slave
+
+
+print str(["relation-set",
+ "database=%s" % database_name,
+ "user=%s" % user,
+ "password=%s" % service_password,
+ 'host=%s' % hostname,
+ 'slave=%s' % slave])
+
+# Create new database
+if not slave:
+    runsql("create database `%s` character set utf8" % database_name)
+
+cursor.close()
+
+# Store new values in relation settings.
+subprocess.call(
+    ["relation-set",
+     "database=%s" % database_name,
+     "user=%s" % user,
+     "password=%s" % service_password,
+     'host=%s' % hostname,
+     'slave=%s' % slave,])

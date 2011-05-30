@@ -7,7 +7,7 @@ change_unit = os.environ.get("ENSEMBLE_REMOTE_UNIT")
 # We'll name the database the same as the service.
 database_name, _ = change_unit.split("/")
 # A user per service unit so we can deny access quickly
-user = change_unit.replace("/","-")
+user = change_unit.split("/")[0]
 connection = None
 lastrun_path = '/var/lib/ensemble/%s.%s.lastrun' % (database_name,user)
 
