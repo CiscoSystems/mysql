@@ -24,15 +24,17 @@ for setting in user password ip port dumpurl; do
     eval $setting=$value
 done
 
+dumpurl=http://$ip/$dumpurl
+echo Stopping slave...
+mysql $ROOTARGS -e "STOP SLAVE"
+
 # Normally this will be empty anyway, but it will save our admin
 # if he accidentally relates a master with some other master!
 backup=/var/backups/alldbs-`date +%Y%m%d%H%M%S`.sql.gz
 mysqldump $ROOTARGS --all-databases --single-transaction |gzip> $backup
 
-dumpurl=http://$ip/$dumpurl
-echo Stopping slave...
-mysql $ROOTARGS -e "STOP SLAVE"
 mysql $ROOTARGS -e "RESET SLAVE"
+mysql $ROOTARGS -e "CHANGE MASTER TO MASTER_HOST='$ip', MASTER_USER='$user', MASTER_PASSWORD='$password', MASTER_PORT=$port"
 echo Importing $dumpurl into MySQL
 curl --silent --show-error $dumpurl |zcat| mysql $ROOTARGS
 # Root pw gets overwritten by import
@@ -61,7 +63,5 @@ if [ -z "$serverid" -o "$serverid" -lt 100000 ] ; then
   mv $binlog* $backupdir || :
   service mysql start
 fi
-mysql $ROOTARGS -e "STOP SLAVE"
-mysql $ROOTARGS -e "CHANGE MASTER TO MASTER_HOST='$ip', MASTER_USER='$user', MASTER_PASSWORD='$password', MASTER_PORT=$port"
 mysql $ROOTARGS -e "START SLAVE"
 mysql $ROOTARGS -e "SHOW SLAVE STATUS"
