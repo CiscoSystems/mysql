@@ -3,8 +3,11 @@
 from common import get_db_cursor, database_name, user, lastrun_path
 
 cursor = get_db_cursor()
-cursor.execute("revoke all privileges on `%s`.* from `%s`" % (database_name, user))
-print "revoked privileges for `%s` on database `%s`" % (user, database_name)
+try:
+    cursor.execute("revoke all privileges on `%s`.* from `%s`" % (database_name, user))
+    print "revoked privileges for `%s` on database `%s`" % (user, database_name)
+except Exception as e:
+    print "revoking failed, possibly incomplete relation.[%s]" % (e)
 
 try:
     os.unlink(lastrun_path)

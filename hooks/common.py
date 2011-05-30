@@ -9,7 +9,7 @@ database_name, _ = change_unit.split("/")
 # A user per service unit so we can deny access quickly
 user = change_unit.replace("/","-")
 connection = None
-lastrun_path = '/var/lib/ensemble/%s.lastrun' % database_name
+lastrun_path = '/var/lib/ensemble/%s.%s.lastrun' % (database_name,user)
 
 def get_db_cursor():
     # Connect to mysql
