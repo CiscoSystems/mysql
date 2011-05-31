@@ -1,0 +1,2 @@
+#!/bin/sh
+rm /var/lib/ensemble/i.am.a.slave
