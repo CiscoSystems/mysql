@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from common import get_db_cursor, database_name, user, lastrun_path
+from common import get_db_cursor, database_name, user, lastrun_path, slave, slave_configured, slave_configured_path
 
 import urllib
 import subprocess
@@ -16,32 +16,30 @@ def runsql(sql):
 	print "[%s]" % sql
 	cursor.execute(sql)
 
-# Find existing databases
-cursor.execute("show databases")
-databases = [i[0] for i in cursor.fetchall()]
-
-slave = os.path.exists('/var/lib/ensemble/i.am.a.slave')
-
 # Determine if we need to create a new database
-if not slave and database_name in databases:
-  print "database exists, assuming configuration has happened already"
+if slave and slave_configured:
+  print "%s exists, assuming configuration done" % slave_configured_path
   sys.exit(0)
+
+if not slave:
+  # Find existing databases
+  cursor.execute("show databases")
+  databases = [i[0] for i in cursor.fetchall()]
+  if database_name in databases:
+    print "database exists, assuming configuration has happened already"
+    sys.exit(0)
 
 # Database is created just before relation-set in case other steps fail
 
 # Create database user and grant access
 service_password = "".join(random.sample(string.letters, 10))
 
+runsql(
+    "grant replication client on *.* to `%s` identified by '%s'"  % (
+    user,
+    service_password))
+
 if slave:
-    cursor.execute("select Repl_client_priv from mysql.user where user='%s' limit 1" % user)
-    priv = cursor.fetchone()[0]
-    if priv == 'Y':
-      print "Already have slave privilegs for %s" % user
-      sys.exit(0)
-    runsql(
-        "grant replication client on *.* to `%s` identified by '%s'"  % (
-        user,
-        service_password))
     runsql(
         "revoke all on `%s`.* from `%s`"  % (
         database_name,   
@@ -60,14 +58,6 @@ else:
 hostname = urllib.urlopen(
     "http://169.254.169.254/latest/meta-data/local-hostname").read()
 
-print "setting values"
-print "host", hostname
-print "database", database_name
-print "user", user
-print "password", service_password
-print "slave", slave
-
-
 print str(["relation-set",
  "database=%s" % database_name,
  "user=%s" % user,
@@ -75,8 +65,10 @@ print str(["relation-set",
  'host=%s' % hostname,
  'slave=%s' % slave])
 
-# Create new database
-if not slave:
+# Create new database or touch slave.configured file
+if slave:
+    open(slave_configured_path,'w').close()
+else:
     runsql("create database `%s` character set utf8" % database_name)
 
 cursor.close()

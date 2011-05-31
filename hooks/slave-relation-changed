@@ -41,6 +41,24 @@ curl --silent --show-error $dumpurl |zcat| mysql $ROOTARGS
 echo Re-setting Root Pasword -- can use ours because it hasnt been flushed
 myrootpw=`cat /var/lib/ensemble/mysql.passwd`
 mysqladmin -uroot -p$myrootpw password $myrootpw
+# Debian packages expect debian-sys-maint@localhost to be root privileged and
+# configured in /etc/mysql/debian.cnf. we just broke that.. fix it
+mysql $ROOTARGS -e "GRANT ALL PRIVILEGES ON *.* TO 'debian-sys-maint'@'localhost' IDENTIFIED BY '$myrootpw'"
+touch /etc/mysql/debian.cnf
+chmod 0600 /etc/mysql/debian.cnf
+cat > /etc/mysql/debian.cnf <<EOF
+[client]
+host=localhost
+user=debian-sys-maint
+password=$myrootpw
+socket=/var/run/mysqld/mysqld.sock
+[mysql_upgrade]
+host=localhost
+user=debian-sys-maint
+password=$myrootpw
+socket=/var/run/mysqld/mysqld.sock
+basedir=/usr
+EOF
 
 serverid=`augtool get /files/etc/mysql/my.cnf/target[3]/server_id | awk -F" = " '{print $2}'`
 server_id_name="server_id"

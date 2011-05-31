@@ -10,6 +10,9 @@ database_name, _ = change_unit.split("/")
 user = change_unit.split("/")[0]
 connection = None
 lastrun_path = '/var/lib/ensemble/%s.%s.lastrun' % (database_name,user)
+slave_configured_path = '/var/lib/ensemble.slave.configured.for.%s' % database_name
+slave_configured = os.path.exists(slave_configured_path)
+slave = os.path.exists('/var/lib/ensemble/i.am.a.slave')
 
 def get_db_cursor():
     # Connect to mysql
