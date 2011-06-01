@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from common import get_db_cursor, database_name, user, lastrun_path, slave, slave_configured, slave_configured_path
+from common import *
 
 import urllib
 import subprocess
@@ -17,11 +17,11 @@ def runsql(sql):
 	cursor.execute(sql)
 
 # Determine if we need to create a new database
-if slave and slave_configured:
+if slave and slave_configured and not broken:
   print "%s exists, assuming configuration done" % slave_configured_path
   sys.exit(0)
 
-if not slave:
+if not slave and not broken:
   # Find existing databases
   cursor.execute("show databases")
   databases = [i[0] for i in cursor.fetchall()]
@@ -40,10 +40,13 @@ runsql(
     service_password))
 
 if slave:
-    runsql(
-        "revoke all on `%s`.* from `%s`"  % (
-        database_name,   
-        user))
+    try:
+        runsql(
+            "revoke all on `%s`.* from `%s`"  % (
+            database_name,   
+            user))
+    except:
+        print "revoke failed, ignoring error"
     runsql(
         "grant select on `%s`.* to `%s`"  % (
         database_name,   
@@ -69,7 +72,11 @@ print str(["relation-set",
 if slave:
     open(slave_configured_path,'w').close()
 else:
-    runsql("create database `%s` character set utf8" % database_name)
+    if not broken:
+        runsql("create database `%s` character set utf8" % database_name)
+
+if broken:
+    os.unlink(broken_path)
 
 cursor.close()
 
@@ -81,3 +88,4 @@ subprocess.call(
      "password=%s" % service_password,
      'host=%s' % hostname,
      'slave=%s' % slave,])
+
