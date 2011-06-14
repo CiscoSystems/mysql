@@ -12,6 +12,8 @@ import pickle
 
 cursor = get_db_cursor()
 
+admin = os.path.basename(sys.argv[0]) == 'db-admin-relation-joined'
+
 def runsql(sql):
 	print "[%s]" % sql
 	cursor.execute(sql)
@@ -21,7 +23,7 @@ if slave and slave_configured and not broken:
   print "%s exists, assuming configuration done" % slave_configured_path
   sys.exit(0)
 
-if not slave and not broken:
+if not slave and not broken and not admin:
   # Find existing databases
   cursor.execute("show databases")
   databases = [i[0] for i in cursor.fetchall()]
@@ -39,7 +41,7 @@ runsql(
     user,
     service_password))
 
-if slave:
+if slave and not admin:
     try:
         runsql(
             "revoke all on `%s`.* from `%s`"  % (
@@ -52,11 +54,17 @@ if slave:
         database_name,   
         user))
 else:
-	runsql(
-	    "grant all on `%s`.* to `%s` identified by '%s'" % (
-		database_name,
-		user,
-		service_password))
+    if admin:
+        runsql(
+            "grant all privileges on *.* to `%s` identified by '%s'" % (
+            user,
+            service_password))
+    else:
+        runsql(
+            "grant all on `%s`.* to `%s` identified by '%s'" % (
+            database_name,
+            user,
+            service_password))
 
 hostname = urllib.urlopen(
     "http://169.254.169.254/latest/meta-data/local-hostname").read()
