@@ -33,15 +33,15 @@ else
 fi
 chown -v -R www-data.www-data /var/www
 
-remote_ip=`relation-get ip`
-test -n "$remote_ip" || exit 1
-local_ip=`ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}'|head -n 1`
+remote_host=`relation-get hostnae`
+test -n "$remote_host" || exit 1
+remote_ip=`dig +short $remote_host`
 pass=`pwgen -s 16`
 augtool -b <<EOF
 defvar webroot /files/etc/apache2/sites-available/default/VirtualHost/Directory[2]
 set \$webroot/directive[last()+1] allow
 set \$webroot/directive[last()]/arg[1] from
-set \$webroot/directive[last()]/arg[2] $remote_ip/32
+set \$webroot/directive[last()]/arg[2] $remote_ip
 save
 EOF
 service apache2 reload
@@ -49,5 +49,5 @@ mysql $ROOTARGS -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO \`$ENS
 relation-set dumpurl=/snaps/$name \
                      user=$ENSEMBLE_REMOTE_UNIT \
                      password=$pass \
-                     ip=$local_ip \
+                     hostname=`hostname -f` \
                      port=3306
