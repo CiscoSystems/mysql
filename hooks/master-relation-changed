@@ -33,7 +33,7 @@ else
 fi
 chown -v -R www-data.www-data /var/www
 
-remote_host=`relation-get hostnae`
+remote_host=`relation-get hostname`
 test -n "$remote_host" || exit 1
 remote_ip=`dig +short $remote_host`
 pass=`pwgen -s 16`

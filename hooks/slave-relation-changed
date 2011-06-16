@@ -14,7 +14,7 @@ if [ "$ENSEMBLE_REMOTE_UNIT" != "$master" ] ; then
 fi
 echo master=$master
 
-for setting in user password ip port dumpurl; do
+for setting in user password hostname port dumpurl; do
     value=`relation-get $setting`
     if [ -z "$value" ] ; then
         echo "$setting is empty! Aborting"
@@ -24,7 +24,7 @@ for setting in user password ip port dumpurl; do
     eval $setting=$value
 done
 
-dumpurl=http://$ip/$dumpurl
+dumpurl=http://$hostname/$dumpurl
 echo Stopping slave...
 mysql $ROOTARGS -e "STOP SLAVE"
 
@@ -34,7 +34,7 @@ backup=/var/backups/alldbs-`date +%Y%m%d%H%M%S`.sql.gz
 mysqldump $ROOTARGS --all-databases --single-transaction |gzip> $backup
 
 mysql $ROOTARGS -e "RESET SLAVE"
-mysql $ROOTARGS -e "CHANGE MASTER TO MASTER_HOST='$ip', MASTER_USER='$user', MASTER_PASSWORD='$password', MASTER_PORT=$port"
+mysql $ROOTARGS -e "CHANGE MASTER TO MASTER_HOST='$hostname', MASTER_USER='$user', MASTER_PASSWORD='$password', MASTER_PORT=$port"
 echo Importing $dumpurl into MySQL
 curl --silent --show-error $dumpurl |zcat| mysql $ROOTARGS
 # Root pw gets overwritten by import
