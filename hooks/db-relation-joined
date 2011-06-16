@@ -66,8 +66,7 @@ else:
             user,
             service_password))
 
-hostname = urllib.urlopen(
-    "http://169.254.169.254/latest/meta-data/local-hostname").read()
+hostname = subprocess.check_output(['hostname','-f']).strip()
 
 print str(["relation-set",
  "database=%s" % database_name,
