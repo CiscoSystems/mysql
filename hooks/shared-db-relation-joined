@@ -1,0 +1,2 @@
+#!/bin/bash
+ensemble-log "Join: shared-db"

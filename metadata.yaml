@@ -1,6 +1,6 @@
 ensemble: formula
 name: mysql
-revision: 97
+revision: 104 
 summary: "MySQL is a fast, stable and true multi-user, multi-threaded SQL database"
 description: |
  MySQL is a fast, stable and true multi-user, multi-threaded SQL database
@@ -11,6 +11,8 @@ provides:
   db:
     interface: mysql
   db-admin:
+    interface: mysql
+  shared-db:
     interface: mysql
   master:
     interface: mysql-oneway-replication
