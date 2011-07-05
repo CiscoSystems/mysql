@@ -11,7 +11,7 @@ ensemble-log "HOOK: shared-db-relation-$RELATION_ACTION fired."
 echo "HOOK: shared-db-relation-$RELATION_ACTION fired."
 
 DATABASE=`relation-get database`
-DB_USER=`echo $ENSEMBLE_REMOTE_UNIT | cut -d/ -f1`
+DB_USER=`relation-get username`
 REMOTE_HOST=`relation-get hostname`
 REMOTE_IP=`relation-get ip`
 PASSWD_FILE="/var/lib/ensemble/mysql-$DB_USER.passwd"
@@ -19,7 +19,7 @@ DEFAULT_ETH=$(ip route  | grep default | awk '{ print $5 }')
 IP=$(ifconfig  $DEFAULT_ETH | grep 'inet addr' | awk '{ print $2 }' | cut -d: -f2)
 
 # peer not ready, exit 0 and wait.
-[[ -z $DATABASE ]] || [[ -z $REMOTE_HOST ]] && exit 0
+[[ -z $DATABASE ]] || [[ -z $REMOTE_HOST ]] || [[ -z $DB_USER ]] && exit 0
 
 if [[ ! -e $PASSWD_FILE ]] ; then
   PASSWORD=$(pwgen -s 16)
