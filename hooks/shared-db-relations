@@ -1,81 +1,60 @@
 #!/bin/bash
-# Create relations between a shared database to numerous host.
+#
+# Create relations between a shared database to many peers.
 # Join does nothing.   Peer requests access to $DATABASE from $REMOTE_IP.
 # It's up to the hooks to ensure database exists, peer has access and
 # clean up grants after a broken/departed peer (TODO)
+#
+# Author: Adam Gandelman <adam.gandelman@canonical.com>
 
 set -ue
 
-RELATION_ACTION=${0##*/shared-db-relation-}
-ensemble-log "HOOK: shared-db-relation-$RELATION_ACTION fired."
-echo "HOOK: shared-db-relation-$RELATION_ACTION fired."
+FORMULA_DIR=$(dirname $0)
 
-DATABASE=`relation-get database`
-DB_USER=`relation-get username`
-REMOTE_HOST=`relation-get hostname`
-REMOTE_IP=`relation-get ip`
-PASSWD_FILE="/var/lib/ensemble/mysql-$DB_USER.passwd"
-DEFAULT_ETH=$(ip route  | grep default | awk '{ print $5 }')
-IP=$(ifconfig  $DEFAULT_ETH | grep 'inet addr' | awk '{ print $2 }' | cut -d: -f2)
-
-# peer not ready, exit 0 and wait.
-[[ -z $DATABASE ]] || [[ -z $REMOTE_HOST ]] || [[ -z $DB_USER ]] && exit 0
-
-if [[ ! -e $PASSWD_FILE ]] ; then
-  PASSWORD=$(pwgen -s 16)
-  echo $PASSWORD >$PASSWD_FILE
+if [[ -e $FORMULA_DIR/shared-db-common ]] ; then
+  . $FORMULA_DIR/shared-db-common
 else
-  PASSWORD=$(cat $PASSWD_FILE)
+  ensemble-log "mysql - shared-db: ERROR Could not load $FORMULA_DIR/shared-db-common"
 fi
 
-database_exists() {
-  echo "exists?"
-  mysql -u root -p$(cat /var/lib/ensemble/mysql.passwd) \
-    -NBe "SHOW DATABASES" | grep $DATABASE >/dev/null
+shared-db_changed() {
+  ensemble-log "mysql - shared-db: Relation CHANGED"
+
+  DATABASE=`relation-get database`
+  DB_USER=`relation-get username`
+  REMOTE_HOST=`relation-get hostname`
+  REMOTE_IP=`relation-get ip`
+  PASSWD_FILE="/var/lib/ensemble/mysql-$DB_USER.passwd"
+
+  # peer not ready, exit 0 and wait.
+  [[ -z $DATABASE ]] || [[ -z $REMOTE_HOST ]] || [[ -z $DB_USER ]] \
+    && echo "DATABASE||REMOTE_HOST||DB_USER not set. Peer not ready?" && exit 0
+
+  if [[ ! -e $PASSWD_FILE ]] ; then
+    PASSWORD=$(pwgen -s 16)
+    echo $PASSWORD >$PASSWD_FILE
+  else
+    PASSWORD=$(cat $PASSWD_FILE)
+  fi
+
+  if ! database_exists ; then
+    ensemble-log "mysql - shared db: Creating database $DATABASE"
+    create_database || exit 1
+    echo "Done"
+  fi
+  if ! grant_exists ; then
+    ensemble-log "mysql - shared-db: Granting $DB_USER@$REMOTE_IP access to $DATABASE"
+    create_grant || exit 1
+  fi
+  relation-set db_host=$IP password=$PASSWORD
+  ensemble-log "mysql - shared-db: Returning access to $DATABASE to $DB_USER@$IP."
 }
 
-create_database() {
-  echo "create"
-  mysql -u root -p$(cat /var/lib/ensemble/mysql.passwd) \
-    -NBe "CREATE DATABASE $DATABASE" >/dev/null
-}
-
-grant_exists() {
-  echo "grant exist?"
-  [[ $(mysql -u root -p$(cat /var/lib/ensemble/mysql.passwd) \
-    -NBe "SELECT User, Host FROM user \
-            WHERE User='$DB_USER' AND Host='$REMOTE_IP'" mysql | wc -l) -gt 0 ]]
-}
-
-create_grant() {
-  echo "create grant?"
-  mysql -u root -p$(cat /var/lib/ensemble/mysql.passwd) \
-    -NBe "GRANT ALL PRIVILEGES ON $DATABASE.* TO '$DB_USER'@'$REMOTE_IP' \
-          IDENTIFIED BY '$PASSWORD'"
-}
-
-cleanup_grant() {
-  echo "cleanup grant"
-  mysql -u root -p$(cat /var/lib/ensemble/mysql.passwd) \
-    -e "DROP FROM user WHERE user='$DB_USER' AND HOST='$REMOTE_IP'" mysql
-}
-
-
+RELATION_ACTION=${0##*/shared-db-relation-}
+ensemble-log "HOOK: shared-db-relation-$RELATION_ACTION fired."
 
 case $RELATION_ACTION in
   "joined") exit 0 ;; # do nothing on join, wait for peer to request access
-  "changed") ensemble-log "shared-db: Relation CHANGED"
-    if ! database_exists ; then
-      echo "Creating database $DATABASE"
-      create_database || exit 1
-      echo "Done"
-    fi
-    if ! grant_exists ; then
-      echo "Granting $DB_USER@$REMOTE_IP access to $DATABASE"
-      create_grant || exit 1
-    fi
-    relation-set db_host=$IP password=$PASSWORD
-    ensemble-log "HOOK: Returning access to $DATABASE to $DB_USER@$IP."
-    ;;
-    *) exit 0 ;;
+  "changed") shared-db_changed ;;
+  *) exit 0 ;;
 esac
