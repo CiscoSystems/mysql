@@ -35,7 +35,7 @@ create_grant() {
 }
 
 cleanup_grant() {
-  ensemble-log "mysql - shared-db: Cleaning up grant for $DB_USER@$REMOTE_IP" 
+  ensemble-log "mysql - shared-db: Cleaning up grant for $DB_USER@$REMOTE_IP"
   mysql -u root -p$(cat /var/lib/ensemble/mysql.passwd) \
     -e "DROP FROM user WHERE user='$DB_USER' AND HOST='$REMOTE_IP'" mysql
 }
