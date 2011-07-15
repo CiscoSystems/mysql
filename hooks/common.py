@@ -3,6 +3,7 @@
 import os
 import MySQLdb
 import subprocess
+import uuid
 
 try:
     change_unit = os.environ['ENSEMBLE_REMOTE_UNIT']
@@ -16,7 +17,7 @@ if len(change_unit) == 0:
 # We'll name the database the same as the service.
 database_name, _ = change_unit.split("/")
 # A user per service unit so we can deny access quickly
-user = change_unit.split("/")[0]
+user = subprocess.check_output(['pwgen', '-N 1', '15']).strip().split("\n")[0]
 connection = None
 lastrun_path = '/var/lib/ensemble/%s.%s.lastrun' % (database_name,user)
 slave_configured_path = '/var/lib/ensemble.slave.configured.for.%s' % database_name
