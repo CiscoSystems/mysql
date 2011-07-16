@@ -48,7 +48,7 @@ shared-db_changed() {
     ensemble-log "mysql - shared-db: Granting $DB_USER@$REMOTE_HOST access to $DATABASE"
     create_grant || exit 1
   fi
-  relation-set db_host=$(hostname) password=$PASSWORD
+  relation-set db_host=$(hostname -f) password=$PASSWORD
   ensemble-log "mysql - shared-db: Returning access to $DATABASE to $DB_USER@$REMOTE_HOST."
 }
 
