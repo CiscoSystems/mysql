@@ -12,6 +12,8 @@ provides:
     interface: mysql
   db-admin:
     interface: mysql
+  shared-db:
+    interface: mysql-shared
   master:
     interface: mysql-oneway-replication
   munin:

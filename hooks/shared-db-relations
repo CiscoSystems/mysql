@@ -1,0 +1,62 @@
+#!/bin/bash
+#
+# Create relations between a shared database to many peers.
+# Join does nothing.   Peer requests access to $DATABASE from $REMOTE_HOST.
+# It's up to the hooks to ensure database exists, peer has access and
+# clean up grants after a broken/departed peer (TODO)
+#
+# Author: Adam Gandelman <adam.gandelman@canonical.com>
+
+set -ue
+
+FORMULA_DIR=$(dirname $0)
+
+if [[ -e $FORMULA_DIR/shared-db-common ]] ; then
+  . $FORMULA_DIR/shared-db-common
+else
+  ensemble-log "mysql - shared-db: ERROR Could not load $FORMULA_DIR/shared-db-common"
+fi
+
+shared-db_changed() {
+  ensemble-log "mysql - shared-db: Relation CHANGED"
+
+  DATABASE=`relation-get database`
+  DB_USER=`relation-get username`
+  REMOTE_HOST=`relation-get hostname`
+  PASSWD_FILE="/var/lib/ensemble/mysql-$DB_USER.passwd"
+
+  # peer not ready, exit 0 and wait.
+  [[ -z $DATABASE ]] || [[ -z $REMOTE_HOST ]] || [[ -z $DB_USER ]] \
+    && echo "DATABASE||REMOTE_HOST||DB_USER not set. Peer not ready?" && exit 0
+
+  # to be used for GRANTs
+  REMOTE_IP=$(dig +search +short $REMOTE_HOST)
+
+  if [[ ! -e $PASSWD_FILE ]] ; then
+    PASSWORD=$(pwgen -s 16)
+    echo $PASSWORD >$PASSWD_FILE
+  else
+    PASSWORD=$(cat $PASSWD_FILE)
+  fi
+
+  if ! database_exists ; then
+    ensemble-log "mysql - shared db: Creating database $DATABASE"
+    create_database || exit 1
+    echo "Done"
+  fi
+  if ! grant_exists ; then
+    ensemble-log "mysql - shared-db: Granting $DB_USER@$REMOTE_HOST access to $DATABASE"
+    create_grant || exit 1
+  fi
+  relation-set db_host=$(hostname -f) password=$PASSWORD
+  ensemble-log "mysql - shared-db: Returning access to $DATABASE to $DB_USER@$REMOTE_HOST."
+}
+
+RELATION_ACTION=${0##*/shared-db-relation-}
+ensemble-log "HOOK: shared-db-relation-$RELATION_ACTION fired."
+
+case $RELATION_ACTION in
+  "joined") exit 0 ;; # do nothing on join, wait for peer to request access
+  "changed") shared-db_changed ;;
+  *) exit 0 ;;
+esac
