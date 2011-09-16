@@ -4,7 +4,7 @@
 
 set -e
 
-ROOTARGS="-uroot -p`cat /var/lib/ensemble/mysql.passwd`"
+ROOTARGS="-uroot -p`cat /var/lib/juju/mysql.passwd`"
 snapdir=/var/www/snaps
 mkdir -p $snapdir
 apt-get -y install apache2
@@ -45,9 +45,9 @@ set \$webroot/directive[last()]/arg[2] $remote_ip
 save
 EOF
 service apache2 reload
-mysql $ROOTARGS -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO \`$ENSEMBLE_REMOTE_UNIT\`@\`$remote_ip\` IDENTIFIED BY '$pass'"
+mysql $ROOTARGS -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO \`$JUJU_REMOTE_UNIT\`@\`$remote_ip\` IDENTIFIED BY '$pass'"
 relation-set dumpurl=/snaps/$name \
-                     user=$ENSEMBLE_REMOTE_UNIT \
+                     user=$JUJU_REMOTE_UNIT \
                      password=$pass \
                      hostname=`hostname -f` \
                      port=3306

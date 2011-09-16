@@ -6,7 +6,7 @@ import subprocess
 import uuid
 
 try:
-    change_unit = os.environ['ENSEMBLE_REMOTE_UNIT']
+    change_unit = os.environ['JUJU_REMOTE_UNIT']
 except KeyError:
     pass
 
@@ -19,16 +19,16 @@ database_name, _ = change_unit.split("/")
 # A user per service unit so we can deny access quickly
 user = subprocess.check_output(['pwgen', '-N 1', '15']).strip().split("\n")[0]
 connection = None
-lastrun_path = '/var/lib/ensemble/%s.%s.lastrun' % (database_name,user)
-slave_configured_path = '/var/lib/ensemble.slave.configured.for.%s' % database_name
+lastrun_path = '/var/lib/juju/%s.%s.lastrun' % (database_name,user)
+slave_configured_path = '/var/lib/juju.slave.configured.for.%s' % database_name
 slave_configured = os.path.exists(slave_configured_path)
-slave = os.path.exists('/var/lib/ensemble/i.am.a.slave')
-broken_path = '/var/lib/ensemble/%s.mysql.broken' % database_name
+slave = os.path.exists('/var/lib/juju/i.am.a.slave')
+broken_path = '/var/lib/juju/%s.mysql.broken' % database_name
 broken = os.path.exists(broken_path)
 
 def get_db_cursor():
     # Connect to mysql
-    passwd = open("/var/lib/ensemble/mysql.passwd").read().strip()
+    passwd = open("/var/lib/juju/mysql.passwd").read().strip()
     print passwd
     connection = MySQLdb.connect(user="root", host="localhost", passwd=passwd)
 

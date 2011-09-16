@@ -1,8 +1,8 @@
 #!/bin/sh
 
-ROOTARGS="-uroot -p`cat /var/lib/ensemble/mysql.passwd`"
+ROOTARGS="-uroot -p`cat /var/lib/juju/mysql.passwd`"
 remote_ip=`relation-get ip`
-mysql $ROOTARGS -e "REVOKE PRIVILEGES ON *.* FROM `$ENSEMBLE_REMOTE_UNIT`@`$remote_ip`"
+mysql $ROOTARGS -e "REVOKE PRIVILEGES ON *.* FROM `$JUJU_REMOTE_UNIT`@`$remote_ip`"
 # find allow lines
 for aline in `augtool ls /files/etc/apache2/sites-available/default/VirtualHost/Directory[2]|grep " = allow"|cut -d' ' -f1` ; do
   ip=`augtool get /files/etc/apache2/sites-available/default/VirtualHost/Directory[2]/$aline/arg[2]`

@@ -14,16 +14,16 @@ FORMULA_DIR=$(dirname $0)
 if [[ -e $FORMULA_DIR/shared-db-common ]] ; then
   . $FORMULA_DIR/shared-db-common
 else
-  ensemble-log "mysql - shared-db: ERROR Could not load $FORMULA_DIR/shared-db-common"
+  juju-log "mysql - shared-db: ERROR Could not load $FORMULA_DIR/shared-db-common"
 fi
 
 shared-db_changed() {
-  ensemble-log "mysql - shared-db: Relation CHANGED"
+  juju-log "mysql - shared-db: Relation CHANGED"
 
   DATABASE=`relation-get database`
   DB_USER=`relation-get username`
   REMOTE_HOST=`relation-get hostname`
-  PASSWD_FILE="/var/lib/ensemble/mysql-$DB_USER.passwd"
+  PASSWD_FILE="/var/lib/juju/mysql-$DB_USER.passwd"
 
   # peer not ready, exit 0 and wait.
   [[ -z $DATABASE ]] || [[ -z $REMOTE_HOST ]] || [[ -z $DB_USER ]] \
@@ -40,20 +40,20 @@ shared-db_changed() {
   fi
 
   if ! database_exists ; then
-    ensemble-log "mysql - shared db: Creating database $DATABASE"
+    juju-log "mysql - shared db: Creating database $DATABASE"
     create_database || exit 1
     echo "Done"
   fi
   if ! grant_exists ; then
-    ensemble-log "mysql - shared-db: Granting $DB_USER@$REMOTE_HOST access to $DATABASE"
+    juju-log "mysql - shared-db: Granting $DB_USER@$REMOTE_HOST access to $DATABASE"
     create_grant || exit 1
   fi
   relation-set db_host=$(hostname -f) password=$PASSWORD
-  ensemble-log "mysql - shared-db: Returning access to $DATABASE to $DB_USER@$REMOTE_HOST."
+  juju-log "mysql - shared-db: Returning access to $DATABASE to $DB_USER@$REMOTE_HOST."
 }
 
 RELATION_ACTION=${0##*/shared-db-relation-}
-ensemble-log "HOOK: shared-db-relation-$RELATION_ACTION fired."
+juju-log "HOOK: shared-db-relation-$RELATION_ACTION fired."
 
 case $RELATION_ACTION in
   "joined") exit 0 ;; # do nothing on join, wait for peer to request access

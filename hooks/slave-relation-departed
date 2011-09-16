@@ -1,2 +1,2 @@
 #!/bin/sh
-rm /var/lib/ensemble/i.am.a.slave
+rm /var/lib/juju/i.am.a.slave

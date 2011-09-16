@@ -2,14 +2,14 @@
 
 set -e
 
-ROOTARGS="-uroot -p`cat /var/lib/ensemble/mysql.passwd`"
+ROOTARGS="-uroot -p`cat /var/lib/juju/mysql.passwd`"
 
 # Others can join that service but only the lowest will be the master
 # Note that we could be more automatic but for now we will wait for
 # service and unit settings to define a "master override" to allow
 # migrating slaves selectively
 master=`relation-list | head -1`
-if [ "$ENSEMBLE_REMOTE_UNIT" != "$master" ] ; then
+if [ "$JUJU_REMOTE_UNIT" != "$master" ] ; then
   exit 0;
 fi
 echo master=$master
@@ -39,7 +39,7 @@ echo Importing $dumpurl into MySQL
 curl --silent --show-error $dumpurl |zcat| mysql $ROOTARGS
 # Root pw gets overwritten by import
 echo Re-setting Root Pasword -- can use ours because it hasnt been flushed
-myrootpw=`cat /var/lib/ensemble/mysql.passwd`
+myrootpw=`cat /var/lib/juju/mysql.passwd`
 mysqladmin -uroot -p$myrootpw password $myrootpw
 # Debian packages expect debian-sys-maint@localhost to be root privileged and
 # configured in /etc/mysql/debian.cnf. we just broke that.. fix it
@@ -83,4 +83,4 @@ if [ -z "$serverid" -o "$serverid" -lt 100000 ] ; then
 fi
 mysql $ROOTARGS -e "START SLAVE"
 mysql $ROOTARGS -e "SHOW SLAVE STATUS"
-touch /var/lib/ensemble/i.am.a.slave
+touch /var/lib/juju/i.am.a.slave
