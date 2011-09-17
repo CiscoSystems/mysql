@@ -30,7 +30,14 @@ shared-db_changed() {
     && echo "DATABASE||REMOTE_HOST||DB_USER not set. Peer not ready?" && exit 0
 
   # to be used for GRANTs
-  REMOTE_IP=$(dig +search +short $REMOTE_HOST)
+  # if the remote unit is actually placed on the same system,
+  # it'll need a grant for a user connecting from 127.0.0.1
+  local_hostname=$(hostname -f)
+  if [[ $REMOTE_HOST != $local_hostname ]] ; then
+    REMOTE_IP=$(dig +search +short $REMOTE_HOST)
+  else
+    REMOTE_IP="localhost"
+  fi
 
   if [[ ! -e $PASSWD_FILE ]] ; then
     PASSWORD=$(pwgen -s 16)
