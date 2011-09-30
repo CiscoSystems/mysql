@@ -1,4 +1,3 @@
-ensemble: formula
 name: mysql
 revision: 103
 summary: MySQL is a fast, stable and true multi-user, multi-threaded SQL database
