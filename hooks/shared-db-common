@@ -8,7 +8,6 @@
 # Author: Adam Gandelman <adam.gandelman@canonical.com>
 
 DEFAULT_ETH=$(ip route  | grep default | awk '{ print $5 }')
-IP=$(ifconfig  $DEFAULT_ETH | grep 'inet addr' | awk '{ print $2 }' | cut -d: -f2)
 
 database_exists() {
   mysql -u root -p$(cat /var/lib/juju/mysql.passwd) \

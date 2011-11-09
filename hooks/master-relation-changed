@@ -49,5 +49,5 @@ mysql $ROOTARGS -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO \`$JUJ
 relation-set dumpurl=/snaps/$name \
                      user=$JUJU_REMOTE_UNIT \
                      password=$pass \
-                     hostname=`hostname -f` \
+                     hostname=`unit-get private-address` \
                      port=3306

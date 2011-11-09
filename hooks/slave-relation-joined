@@ -1,2 +1,2 @@
 #!/bin/sh
-relation-set hostname=`hostname -f`
+relation-set hostname=`unit-get private-address`
