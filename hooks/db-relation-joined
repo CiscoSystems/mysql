@@ -79,7 +79,7 @@ print str(["relation-set",
 if slave:
     open(slave_configured_path,'w').close()
 else:
-    if not broken:
+    if not broken and not admin:
         runsql("create database `%s` character set utf8" % database_name)
 
 if broken:

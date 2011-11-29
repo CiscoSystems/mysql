@@ -9,7 +9,7 @@ provides:
   db:
     interface: mysql
   db-admin:
-    interface: mysql
+    interface: mysql-root
   shared-db:
     interface: mysql-shared
   master:
