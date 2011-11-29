@@ -23,7 +23,7 @@ if slave and slave_configured and not broken:
   print "%s exists, assuming configuration done" % slave_configured_path
   sys.exit(0)
 
-if not slave and not broken:
+if not slave and not broken and not admin:
   # Find existing databases
   cursor.execute("show databases")
   databases = [i[0] for i in cursor.fetchall()]
@@ -79,7 +79,7 @@ print str(["relation-set",
 if slave:
     open(slave_configured_path,'w').close()
 else:
-    if not broken:
+    if not broken and not admin:
         runsql("create database `%s` character set utf8" % database_name)
 
 if broken:
