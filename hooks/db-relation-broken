@@ -15,5 +15,7 @@ try:
 except Exception as e:
     print "revoking failed, possibly incomplete relation. %s" % (e)
 
+cleanup_service_user(database_name)
+
 if slave and slave_configured:
     os.unlink(slave_configured_path)

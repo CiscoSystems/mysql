@@ -5,6 +5,26 @@ import MySQLdb
 import subprocess
 import uuid
 
+def get_service_user_file(service):
+    return '/var/lib/juju/%s.service_user' % service
+
+
+def get_service_user(service):
+    sfile = '/var/lib/juju/%s.service_user' % service
+    if os.path.exists(sfile):
+        with open(sfile, 'r') as f:
+            return f.readline().strip()
+    suser = subprocess.check_output(['pwgen', '-N 1', '15']).strip().split("\n")[0]
+    with open(sfile, 'w') as f:
+        f.write("%s\n" % suser)
+        f.flush()
+    return suser
+
+
+def cleanup_service_user(service):
+    os.unlink(get_service_user_file(service))
+
+
 try:
     change_unit = os.environ['JUJU_REMOTE_UNIT']
 except KeyError:
@@ -17,7 +37,7 @@ if len(change_unit) == 0:
 # We'll name the database the same as the service.
 database_name, _ = change_unit.split("/")
 # A user per service unit so we can deny access quickly
-user = subprocess.check_output(['pwgen', '-N 1', '15']).strip().split("\n")[0]
+user = get_service_user(database_name)
 connection = None
 lastrun_path = '/var/lib/juju/%s.%s.lastrun' % (database_name,user)
 slave_configured_path = '/var/lib/juju.slave.configured.for.%s' % database_name
