@@ -1,0 +1,25 @@
+options:
+    dataset-size:
+        default: 1G
+        description: How much data do you want to keep in memory in the DB. This will be used to tune settings in the database server appropriately. Any more specific settings will override these defaults though. This currently sets innodb_buffer_pool_size or key_cache_size depending on the setting in preferred-storage-engine. If query-cache-type is set to 'ON' or 'DEMAND' 10% of this is given to query-cache-size.
+        type: string
+    preferred-storage-engine:
+        default: InnoDB
+        type: string
+        description: Tune the server for usage of this storage engine. Other possible value is MyISAM. Comma separated will cause settings to split resources evenly among given engines.
+    tuning-level:
+        default: safest
+        type: string
+        description: Valid values are 'safest', 'fast', and 'unsafe'. If set to safest, all settings are tuned to have maximum safety at the cost of performance. Fast will turn off most controls, but may lose data on crashes. unsafe will turn off all protections.
+    query-cache-type:
+        default: "ON"
+        type: string
+        description: Query cache is usually a good idea, but can hurt concurrency. Valid values are "OFF", "ON", or "DEMAND". http://dev.mysql.com/doc/refman/5.1/en/server-system-variables.html#sysvar_query_cache_type
+    query-cache-size:
+        default: -1
+        type: int
+        description: Override the computed version from dataset-size. Still works if query-cache-type is "OFF" since sessions can override the cache type setting on their own.
+    max-connections:
+        default: -1
+        type: int
+        description: Maximum connections to allow. -1 means use the server's compiled in default.
