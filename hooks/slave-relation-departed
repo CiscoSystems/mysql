@@ -1,2 +1,1 @@
-#!/bin/sh
-rm /var/lib/juju/i.am.a.slave
+slave-relation-broken
