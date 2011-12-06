@@ -34,7 +34,7 @@ fi
 chown -v -R www-data.www-data /var/www
 
 remote_host=`relation-get hostname`
-test -n "$remote_host" || exit 1
+test -n "$remote_host" || exit 0
 remote_ip=`dig +short $remote_host`
 pass=`pwgen -s 16`
 augtool -b <<EOF
@@ -45,9 +45,10 @@ set \$webroot/directive[last()]/arg[2] $remote_ip
 save
 EOF
 service apache2 reload
-mysql $ROOTARGS -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO \`$JUJU_REMOTE_UNIT\`@\`$remote_ip\` IDENTIFIED BY '$pass'"
+user=`echo $JUJU_REMOTE_UNIT | sed -e 's,/,-,'`
+mysql $ROOTARGS -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO \`$user\`@\`$remote_ip\` IDENTIFIED BY '$pass'"
 relation-set dumpurl=/snaps/$name \
-                     user=$JUJU_REMOTE_UNIT \
+                     user=$user \
                      password=$pass \
                      hostname=`unit-get private-address` \
                      port=3306

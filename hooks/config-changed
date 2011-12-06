@@ -24,7 +24,7 @@ def human_to_bytes(human):
 # smart-calc stuff in the configs
 dataset_bytes = human_to_bytes(configs['dataset-size'])
 
-if configs['query-cache-size'] != -1 and configs['query-cache-type'] in ['ON','DEMAND']:
+if configs['query-cache-size'] == -1 and configs['query-cache-type'] in ['ON','DEMAND']:
     configs['query-cache-size'] = int(dataset_bytes * 0.20)
     dataset_bytes -= configs['query-cache-size']
 
@@ -46,6 +46,8 @@ if 'InnoDB' in preferred_engines:
         configs['innodb-flush-log-at-trx-commit']=2
 else:
     configs['innodb-buffer-pool-size'] = 0
+
+configs['default-storage-engine'] = preferred_engines[0]
 
 if 'MyISAM' in preferred_engines:
     configs['key-buffer'] = chunk_size
@@ -124,7 +126,7 @@ skip-external-locking
 #
 # Instead of skip-networking the default is now to listen only on
 # localhost which is more compatible and is not less secure.
-bind-address		= 127.0.0.1
+bind-address		= 0.0.0.0
 #
 # * Fine Tuning
 #
@@ -176,6 +178,8 @@ max_binlog_size         = 100M
 innodb_buffer_pool_size = %(innodb-buffer-pool-size)s
 innodb_flush_log_at_trx_commit = %(innodb-flush-log-at-trx-commit)s
 sync_binlog = %(sync-binlog)s
+default_storage_engine = %(default-storage-engine)s
+skip-name-resolve
 # * Security Features
 #
 # Read the manual, too, if you want chroot!

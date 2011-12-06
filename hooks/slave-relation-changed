@@ -60,25 +60,28 @@ socket=/var/run/mysqld/mysqld.sock
 basedir=/usr
 EOF
 
-serverid=`augtool get /files/etc/mysql/my.cnf/target[3]/server_id | awk -F" = " '{print $2}'`
-server_id_name="server_id"
-if [ -z "$serverid" ] ; then
-  serverid=`augtool get /files/etc/mysql/my.cnf/target[3]/server-id | awk -F" = " '{print $2}'`
-  server_id_name="server-id"
-fi
 if [ -z "$serverid" ] ; then
   serverid=`echo $user | cut -d/ -f2`
 fi
-if [ -z "$serverid" -o "$serverid" -lt 100000 ] ; then
-  # add 100000 to server_id to avoid conflicts w/ masters
-  serverid=$(($serverid+100000))
-  echo "set /files/etc/mysql/my.cnf/target[3]/$server_id_name $serverid\nsave" | augtool -b
+# add 100000 to server_id to avoid conflicts w/ masters
+serverid=$(($serverid+100000))
+if [ -f /etc/mysql/conf.d/slave.cf ] ; then
+    old_hash=`md5sum /etc/mysql/conf.d/slave.cf`
+else
+    old_hash="xxx"
+fi
+cat > /etc/mysql/conf.d/binlog.cnf <<EOF
+[mysqld]
+server-id = $serverid
+log_bin = /var/log/mysql/mysql-bin.log
+EOF
+new_hash=`md5sum /etc/mysql/conf.d/binlog.cnf`
+if [ "$new_hash" != "$old_hash" ] ; then
   service mysql stop
-  # clear binlogs
-  binlog=`augtool get /files/etc/mysql/my.cnf/target[3]/log_bin|cut -d' ' -f3`
+  # clear any binlogs
   backupdir=/var/backups/binlogs-`date +%Y%m%d%H%M%S`
   mkdir -p $backupdir
-  mv $binlog* $backupdir || :
+  mv /var/log/mysql/mysql-bin* $backupdir || :
   service mysql start
 fi
 mysql $ROOTARGS -e "START SLAVE"
