@@ -1,6 +1,7 @@
 #!/bin/bash
 
-sudo apt-get install -qqy debconf-utils python-mysqldb uuid augeas-tools augeas-lenses pwgen dnsutils
+apt-get update
+sudo apt-get install -qqy debconf-utils python-mysqldb uuid augeas-tools augeas-lenses pwgen dnsutils || exit 1
 
 PASSFILE=/var/lib/juju/mysql.passwd
 if ! [ -f $PASSFILE ] ; then
