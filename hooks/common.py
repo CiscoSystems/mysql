@@ -1,6 +1,7 @@
 # vim: syntax=python
 
 import os
+import sys
 import MySQLdb
 import subprocess
 import uuid
@@ -25,17 +26,20 @@ def cleanup_service_user(service):
     os.unlink(get_service_user_file(service))
 
 
-try:
-    change_unit = os.environ['JUJU_REMOTE_UNIT']
-except KeyError:
-    pass
-
-if len(change_unit) == 0:
-    # XXX hack to work around https://launchpad.net/bugs/791042
-    change_unit  = subprocess.check_output(['relation-list']).strip().split("\n")[0]
+relation_id = os.environ.get('JUJU_RELATION_ID')
+change_unit = os.environ.get('JUJU_REMOTE_UNIT')
 
 # We'll name the database the same as the service.
-database_name, _ = change_unit.split("/")
+database_name_file = '.%s_database_name' % (relation_id)
+# change_unit will be None on broken hooks
+if change_unit:
+    database_name, _ = change_unit.split("/")
+elif os.path.exists(database_name_file):
+    with open(database_name_file, 'r') as dbname:
+        database_name = dbname.readline()
+else:
+    print 'No established database and no REMOTE_UNIT. Exitting gracefully.'
+    sys.exit(0)
 # A user per service unit so we can deny access quickly
 user = get_service_user(database_name)
 connection = None

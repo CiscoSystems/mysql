@@ -81,6 +81,8 @@ if slave:
 else:
     if not broken and not admin:
         runsql("create database `%s` character set utf8" % database_name)
+        with open(database_name_file, 'w') as dbname:
+            dbname.write(database_name)
 
 if broken:
     os.unlink(broken_path)
