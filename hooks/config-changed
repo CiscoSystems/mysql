@@ -215,7 +215,6 @@ i_am_a_slave = os.path.isfile('/var/lib/juju/i.am.a.slave')
 unit_id = os.environ['JUJU_UNIT_NAME'].split('/')[1]
 
 if not i_am_a_slave and configs['tuning-level'] == 'fast':
-    os.unlink('/etc/mysql/conf.d/binlog.cnf')
     binlog_cnf = ''
 else:
     # On slaves, this gets overwritten
@@ -247,14 +246,17 @@ for target,content in targets.iteritems():
         t.flush()
         tmd5 = hashlib.md5()
         tmd5.update(content)
-        with open(target,'r') as old:
-            md5=hashlib.md5()
-            md5.update(old.read())
-            oldhash = md5.digest()
-            if oldhash != tmd5.digest():
-                os.rename(target,'%s.%s' % (target, md5.hexdigest()))
-                os.rename(t.name, target)
-                need_restart = True
+        if os.path.exists(target):
+            with open(target,'r') as old:
+                md5=hashlib.md5()
+                md5.update(old.read())
+                oldhash = md5.digest()
+                if oldhash != tmd5.digest():
+                    os.rename(target,'%s.%s' % (target, md5.hexdigest()))
+                    need_restart = True
+        else:
+            need_restart = True
+        os.rename(t.name, target)
 
 if need_restart:
     try:
