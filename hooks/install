@@ -13,17 +13,3 @@ echo mysql-server-5.1 mysql-server/root_password password $PASSWORD | debconf-se
 echo mysql-server-5.1 mysql-server/root_password_again password $PASSWORD | debconf-set-selections
 
 DEBIAN_FRONTEND=noninteractive apt-get -y install -qq mysql-server
-
-unit_id=`echo $JUJU_UNIT_NAME | cut -d/ -f2`
-
-# On slaves, this gets overwritten
-if [ ! -f /var/lib/juju/i.am.a.slave ] ; then
-    cat > /etc/mysql/conf.d/binlog.cnf <<EOF
-[mysqld]
-server_id = $unit_id
-log_bin = /var/log/mysql/mysql-bin.log
-EOF
-fi
-
-service mysql stop || :
-service mysql start

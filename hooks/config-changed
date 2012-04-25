@@ -211,23 +211,54 @@ key_buffer		= 16M
 !includedir /etc/mysql/conf.d/
 """
 
+i_am_a_slave = os.path.isfile('/var/lib/juju/i.am.a.slave')
+unit_id = os.environ['JUJU_UNIT_NAME'].split('/')[1]
+
+if not i_am_a_slave and configs['tuning-level'] == 'fast':
+    os.unlink('/etc/mysql/conf.d/binlog.cnf')
+    binlog_cnf = ''
+else:
+    # On slaves, this gets overwritten
+    binlog_template = """
+[mysqld]
+server_id = %s
+log_bin = /var/log/mysql/mysql-bin.log
+binlog_format = %s
+"""
+
+    binlog_cnf = binlog_template % (unit_id,
+        configs.get('binlog_format','MIXED'))
+
 mycnf=template % configs
-with tempfile.NamedTemporaryFile(mode='w',dir='/etc/mysql',delete=False) as t:
-    t.write(mycnf)
-    t.flush()
-    tmd5 = hashlib.md5()
-    tmd5.update(mycnf)
-    with open('/etc/mysql/my.cnf','r') as old:
-        md5=hashlib.md5()
-        md5.update(old.read())
-        oldhash = md5.digest()
-        if oldhash != tmd5.digest():
-            os.rename('/etc/mysql/my.cnf','/etc/mysql/my.cnf.%s' % md5.hexdigest())
-            os.rename(t.name, '/etc/mysql/my.cnf')
-            try:
-                check_call(['service','mysql','stop'])
-            except subprocess.CalledProcessError:
-                pass
-            check_call(['service','mysql','start'])
-        else:
-            check_call(['juju-log','my.cnf not changed, skipping restart/replace'])
+
+targets = {'/etc/mysql/conf.d/binlog.cnf': binlog_cnf,
+           '/etc/mysql/my.cnf': mycnf,
+           }
+
+need_restart = False
+for target,content in targets.iteritems():
+    tdir = os.path.dirname(target) 
+    if len(content) == 0 and os.path.exists(target):
+        os.unlink(target)
+        need_restart = True
+        continue
+    with tempfile.NamedTemporaryFile(mode='w',dir=tdir,delete=False) as t:
+        t.write(content)
+        t.flush()
+        tmd5 = hashlib.md5()
+        tmd5.update(content)
+        with open(target,'r') as old:
+            md5=hashlib.md5()
+            md5.update(old.read())
+            oldhash = md5.digest()
+            if oldhash != tmd5.digest():
+                os.rename(target,'%s.%s' % (target, md5.hexdigest()))
+                os.rename(t.name, target)
+                need_restart = True
+
+if need_restart:
+    try:
+        check_call(['service','mysql','stop'])
+    except subprocess.CalledProcessError:
+        pass
+    check_call(['service','mysql','start'])

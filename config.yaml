@@ -23,3 +23,7 @@ options:
         default: -1
         type: int
         description: Maximum connections to allow. -1 means use the server's compiled in default.
+    binlog-format:
+        default: 'MIXED'
+        type: string
+        description: If binlogging is enabled, this is the format that will be used. Ignored when tuning-level == fast.
