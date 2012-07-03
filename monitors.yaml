@@ -1,0 +1,10 @@
+version: '0.1'
+monitors:
+    nrpe:
+        mysqld:
+            name: MySQL Running
+            args:
+                command: check_procs
+                args: '-c 1: /usr/sbin/mysqld'
+    mysql:
+        basic:
