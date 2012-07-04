@@ -8,3 +8,4 @@ monitors:
                 args: '-c 1: /usr/sbin/mysqld'
     mysql:
         basic:
+            args: ['monitors','']

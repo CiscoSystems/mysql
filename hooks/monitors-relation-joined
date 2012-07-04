@@ -1,2 +1,7 @@
-#!/bin/sh
-relation-set "monitors=$(cat monitors.yaml)"
+#!/bin/bash
+set -ue
+. hooks/monitors.common.bash
+echo "'${monitor_user}'@'${remote_addr}'" >> $revoke_todo
+$MYSQL -e "GRANT USAGE ON *.* TO '${monitor_user}'@'${remote_addr}'"
+
+relation-set monitors="$(cat monitors.yaml)"

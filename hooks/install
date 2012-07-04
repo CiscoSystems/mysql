@@ -1,7 +1,8 @@
 #!/bin/bash
 
+add-apt-repository -y ppa:charmers/charm-helpers
 apt-get update
-sudo apt-get install -qqy debconf-utils python-mysqldb uuid augeas-tools augeas-lenses pwgen dnsutils || exit 1
+apt-get install -y debconf-utils python-mysqldb uuid augeas-tools augeas-lenses pwgen dnsutils charm-helper-sh || exit 1
 
 PASSFILE=/var/lib/juju/mysql.passwd
 if ! [ -f $PASSFILE ] ; then
@@ -12,4 +13,4 @@ PASSWORD=`cat $PASSFILE`
 echo mysql-server-5.1 mysql-server/root_password password $PASSWORD | debconf-set-selections
 echo mysql-server-5.1 mysql-server/root_password_again password $PASSWORD | debconf-set-selections
 
-DEBIAN_FRONTEND=noninteractive apt-get -y install -qq mysql-server
+apt-get -y install -qq mysql-server
