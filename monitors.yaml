@@ -1,11 +1,13 @@
-version: '0.1'
+version: '0.3'
 monitors:
-    nrpe:
-        mysqld:
-            name: MySQL Running
-            args:
-                command: check_procs
-                args: '-c 1: /usr/sbin/mysqld'
-    mysql:
-        basic:
-            args: ['monitors','']
+    local:
+        procrunning:
+            mysqld:
+                name: MySQL Running
+                min: 1
+                max: 1
+                executable: /usr/sbin/mysqld
+    remote:
+        mysql:
+            basic:
+                user: monitors
