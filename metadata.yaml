@@ -20,6 +20,9 @@ provides:
     interface: munin-node
   monitors:
     interface: monitors
+  local-monitors:
+    interface: local-monitors
+    scope: container
 requires:
   slave:
     interface: mysql-oneway-replication

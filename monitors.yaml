@@ -6,7 +6,7 @@ monitors:
                 name: MySQL Running
                 min: 1
                 max: 1
-                executable: /usr/sbin/mysqld
+                executable: mysqld
     remote:
         mysql:
             basic:
