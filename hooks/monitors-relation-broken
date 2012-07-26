@@ -1,8 +1,8 @@
 #!/bin/bash
+set -ue
 . hooks/monitors.common.bash
 if [ -r "$revoke_todo" ] ; then
-    while read TODO < $revoke_todo ; do
-        $MYSQL -e "REVOKE USAGE ON *.* FROM $TODO"
-    done
+    sed -e 's/^/REVOKE USAGE ON *.* FROM /;s/$/\;/;' < $revoke_todo
+    sed -e 's/^/REVOKE USAGE ON *.* FROM /;s/$/\;/;' < $revoke_todo | $MYSQL
     rm -f $revoke_todo
 fi
