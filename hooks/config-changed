@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from subprocess import check_output,check_call
+from subprocess import check_output,check_call, CalledProcessError
 import tempfile
 import json
 import re
@@ -261,6 +261,6 @@ for target,content in targets.iteritems():
 if need_restart:
     try:
         check_call(['service','mysql','stop'])
-    except subprocess.CalledProcessError:
+    except CalledProcessError:
         pass
     check_call(['service','mysql','start'])
