@@ -1,4 +1,5 @@
 name: mysql
+format: 2
 summary: MySQL is a fast, stable and true multi-user, multi-threaded SQL database
 maintainer: Clint Byrum <clint@ubuntu.com>
 description: |
@@ -17,6 +18,11 @@ provides:
     interface: mysql-oneway-replication
   munin:
     interface: munin-node
+  monitors:
+    interface: monitors
+  local-monitors:
+    interface: local-monitors
+    scope: container
 requires:
   slave:
     interface: mysql-oneway-replication
