@@ -1,5 +1,4 @@
 name: mysql
-format: 2
 summary: MySQL is a fast, stable and true multi-user, multi-threaded SQL database
 maintainer: Clint Byrum <clint@ubuntu.com>
 description: |
