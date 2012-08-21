@@ -6,10 +6,25 @@ import json
 import re
 import hashlib
 import os
+from string import upper
 
 num_re = re.compile('^[0-9]+$')
 
+# Going for the biggest page size to avoid wasted bytes. InnoDB page size is
+# 16MB
+PAGE_SIZE = 16*1024*1024
+
 configs=json.loads(check_output(['config-get','--format=json']))
+
+def get_memtotal():
+    with open('/proc/meminfo') as meminfo_file:
+        meminfo = {}
+        for line in meminfo_file:
+            (key, mem) = line.split(':', 2)
+            if key == 'MemTotal':
+                (mtot, modifier) = mem.strip().split(' ')
+                return '%s%s' % (mtot, upper(modifier[0]))
+
 
 # There should be a library for this
 def human_to_bytes(human):
@@ -19,14 +34,23 @@ def human_to_bytes(human):
     modifier=human[-1]
     if modifier in factors:
         return int(human[:-1]) * factors[modifier]
-    raise Exception("Can only convert K,M,G, or T")
+    if modifier == '%':
+        total_ram = human_to_bytes(get_memtotal())
+        factor = int(human[:-1]) * 0.01
+        pctram = total_ram * factor
+        return int(pctram - (pctram % PAGE_SIZE))
+    raise ValueError("Can only convert K,M,G, or T")
 
 # smart-calc stuff in the configs
 dataset_bytes = human_to_bytes(configs['dataset-size'])
 
+check_call(['juju-log','-l','INFO','dataset size in bytes: %d' % dataset_bytes])
+
 if configs['query-cache-size'] == -1 and configs['query-cache-type'] in ['ON','DEMAND']:
-    configs['query-cache-size'] = int(dataset_bytes * 0.20)
-    dataset_bytes -= configs['query-cache-size']
+    qcache_bytes = (dataset_bytes * 0.20)
+    qcache_bytes = int(qcache_bytes - (qcache_bytes % PAGE_SIZE))
+    configs['query-cache-size'] = qcache_bytes
+    dataset_bytes -= qcache_bytes
 
 # 5.5 allows the words, but not 5.1
 if configs['query-cache-type'] == 'ON':
