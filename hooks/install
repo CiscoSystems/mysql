@@ -5,7 +5,9 @@ apt-get update
 apt-get install -y debconf-utils python-mysqldb uuid augeas-tools augeas-lenses pwgen dnsutils charm-helper-sh || exit 1
 
 PASSFILE=/var/lib/juju/mysql.passwd
-touch $PASSFILE
+if ! [ -f $PASSFILE ] ; then
+  touch $PASSFILE
+fi
 chmod 0600 $PASSFILE
 if ! [ -s $PASSFILE ] ; then
   uuid > $PASSFILE
