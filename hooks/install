@@ -1,6 +1,5 @@
 #!/bin/bash
 
-add-apt-repository -y ppa:charmers/charm-helpers
 apt-get update
 apt-get install -y debconf-utils python-mysqldb uuid augeas-tools augeas-lenses pwgen dnsutils charm-helper-sh || exit 1
 
