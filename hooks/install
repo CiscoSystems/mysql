@@ -11,9 +11,3 @@ chmod 0600 $PASSFILE
 if ! [ -s $PASSFILE ] ; then
   uuid > $PASSFILE
 fi
-PASSWORD=`cat $PASSFILE`
-
-echo mysql-server-5.1 mysql-server/root_password password $PASSWORD | debconf-set-selections
-echo mysql-server-5.1 mysql-server/root_password_again password $PASSWORD | debconf-set-selections
-
-apt-get -y install -qq mysql-server
