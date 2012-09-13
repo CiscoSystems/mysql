@@ -51,12 +51,14 @@ if configs['flavor'] not in valid_flavors:
             'Invalid flavor, must be one of %s' % ','.join(valid_flavors)])
     sys.exit(1)
 
+remove_pkgs=[]
 if configs['flavor'] == 'distro':
     apt_sources = []
     package = 'mysql-server'
 elif configs['flavor'] == 'percona':
     apt_sources = ['repo.percona.com/apt']
     package = 'percona-server-server'
+    remove_pkgs = ['mysql-client-core-5.5','mysql-server-core-5.5']
 elif configs['flavor'] == 'mariadb':
     apt_sources = ['ftp.osuosl.org/pub/mariadb/repo/5.5/ubuntu']
     package = 'mariadb-server'
@@ -83,6 +85,8 @@ dconf.stdin.write("%s %s/root_password_again password %s\n" % (package, package,
 dconf.communicate()
 dconf.wait()
 
+if len(remove_pkgs):
+    check_call(['apt-get','-y','remove'] + remove_pkgs)
 check_call(['apt-get','-y','install','-qq',package])
 
 # smart-calc stuff in the configs
