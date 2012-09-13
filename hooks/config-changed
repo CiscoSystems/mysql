@@ -1,11 +1,12 @@
 #!/usr/bin/python
 
-from subprocess import check_output,check_call, CalledProcessError
+from subprocess import check_output,check_call, CalledProcessError, Popen, PIPE
 import tempfile
 import json
 import re
 import hashlib
 import os
+import sys
 from string import upper
 
 num_re = re.compile('^[0-9]+$')
@@ -76,9 +77,11 @@ for source in apt_sources:
 with open('/var/lib/juju/mysql.passwd','r') as rpw:
     root_pass = rpw.read()
 
-dconf = Popen(['debconf-set-selections'], stdin=subprocess.PIPE)
+dconf = Popen(['debconf-set-selections'], stdin=PIPE)
 dconf.stdin.write("%s %s/root_password password %s\n" % (package, package, root_pass))
 dconf.stdin.write("%s %s/root_password_again password %s\n" % (package, package, root_pass))
+dconf.communicate()
+dconf.wait()
 
 check_call(['apt-get','-y','install','-qq',package])
 
