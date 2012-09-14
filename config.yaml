@@ -11,6 +11,10 @@ options:
         default: safest
         type: string
         description: Valid values are 'safest', 'fast', and 'unsafe'. If set to safest, all settings are tuned to have maximum safety at the cost of performance. Fast will turn off most controls, but may lose data on crashes. unsafe will turn off all protections.
+    flavor:
+        default: distro
+        type: string
+        description: Possible values are 'distro' or 'percona'
     query-cache-type:
         default: "ON"
         type: string
