@@ -34,7 +34,7 @@ shared-db_changed() {
   # it'll need a grant for a user connecting from 127.0.0.1
   local_hostname=$(hostname -f)
   if [[ $REMOTE_HOST != $local_hostname ]] ; then
-    REMOTE_IP=$(dig +search +short $REMOTE_HOST)
+    REMOTE_IP=$(python -c "import socket ; print socket.gethostbyname('$REMOTE_HOST')")
   else
     REMOTE_IP="127.0.0.1"
   fi
