@@ -15,18 +15,3 @@ License: GPL-3
  .
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-Files: inifile.aug
-Copyright: 2007,2008 Red Hat Inc.
-Comment: Copyrights are not specified in the file, this is based on 
- /usr/share/doc/augeas-lenses/copyright in the Debian package.
-License: LGPL-2.1+
- This file is licensed under the LGPLv2+, like the rest of Augeas.
-
-Files: mysql.aug
-Copyright: 2007,2008 Red Hat Inc.
-Comment: Copyrights are not specified in the files, this is based on 
- /usr/share/doc/augeas-lenses/copyright in the Debian package (v0.8.0 
- or later)
-License: LGPL-2.1+
- See also /usr/share
