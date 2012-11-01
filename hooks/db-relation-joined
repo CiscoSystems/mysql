@@ -23,14 +23,6 @@ if slave and slave_configured and not broken:
   print "%s exists, assuming configuration done" % slave_configured_path
   sys.exit(0)
 
-if not slave and not broken and not admin:
-  # Find existing databases
-  cursor.execute("show databases")
-  databases = [i[0] for i in cursor.fetchall()]
-  if database_name in databases:
-    print "database exists, assuming configuration has happened already"
-    sys.exit(0)
-
 # Database is created just before relation-set in case other steps fail
 
 # Create database user and grant access
@@ -78,11 +70,17 @@ print str(["relation-set",
 # Create new database or touch slave.configured file
 if slave:
     open(slave_configured_path,'w').close()
-else:
-    if not broken and not admin:
-        runsql("create database `%s` character set utf8" % database_name)
-        with open(database_name_file, 'w') as dbname:
-            dbname.write(database_name)
+elif not broken and not admin:
+  # Find existing databases
+  cursor.execute("show databases")
+  databases = [i[0] for i in cursor.fetchall()]
+  if database_name in databases:
+      print "database exists already"
+  else:
+      if not broken and not admin:
+          runsql("create database `%s` character set utf8" % database_name)
+          with open(database_name_file, 'w') as dbname:
+              dbname.write(database_name)
 
 if broken:
     os.unlink(broken_path)
