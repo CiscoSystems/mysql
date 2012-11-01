@@ -4,51 +4,82 @@
 
 set -e
 
+. /usr/share/charm-helper/sh/net.sh
+
 ROOTARGS="-uroot -p`cat /var/lib/juju/mysql.passwd`"
 snapdir=/var/www/snaps
 mkdir -p $snapdir
 apt-get -y install apache2
 # disable wide-open access (restrict to each db IP)
-allowline=`augtool get /files/etc/apache2/sites-available/default/VirtualHost/Directory[2]/directive[4]/arg[2]`
-if [ "$allowline" = "/files/etc/apache2/sites-available/default/VirtualHost/Directory[2]/directive[4]/arg[2] = all" ] ; then
-  # disable allow from all
-  augtool -b <<EOF
-  defvar webroot /files/etc/apache2/sites-available/default/VirtualHost/Directory[2]
-  rm \$webroot/directive[4]
-  save
-EOF
-  service apache2 reload
-fi
+rhosts=""
+remote_ip=""
+for r in $(relation-ids master) ; do
+    for runit in $(relation-list -r $r) ; do
+        rhost=$(relation-get -r $r hostname $runit)
+        if [ -n "$rhost" ] ; then
+            rhosts=${rhosts},$rhost
+        fi
+        if [ "$runit" = "$JUJU_REMOTE_UNIT" ] ; then
+            remote_ip=$rhost
+            if ch_is_ip $remote_ip ; else
+                remote_ip=$(ch_get_ip $remote_ip)
+            fi
+        fi
+    done
+done
+# remove any leading comma
+rhosts=${rhosts##,}
 
+# if there are no hosts, we simply disable all access
+target=/etc/apache2/sites-available/mysql-dumps
+cat > $target <<EOF
+DocumentRoot /var/www
+<Directory /var/www>
+  Order deny,allow
+  Deny from all
+EOF
+if [ -n "$rhosts" ] ; then
+cat >> $target <<EOF
+  allow from ${rhosts}
+EOF
+fi
+cat >> $target <<EOF
+  Options -Indexes
+</Directory>
+EOF
+a2ensite mysql-dumps
+a2dissite default
+service apache2 reload
+
+pass=`pwgen -s 16`
 # TODO: settings.. make mmin tunable as it is highly subjective
 recent_backup=`find $snapdir -name 'replication_seed.*.sql.gz' -mmin -60|head -1`
 if [ -z "$recent_backup" ] ; then
     name=replication_seed.`date +%Y%m%d%H%M%S`.sql.gz
     echo `date`: Creating snapshot $recent_backup
     # Assumes transactional storage -- MyISAM please GO AWAY
-    mysqldump $ROOTARGS --all-databases --single-transaction --master-data |gzip>$snapdir/$name
+    mysqldump $ROOTARGS --add-drop-database --all-databases --single-transaction --master-data |gzip>$snapdir/$name
     # Make sure webserver can serve it
 else
     name=`basename $recent_backup`
 fi
 chown -v -R www-data.www-data /var/www
 
-remote_host=`relation-get hostname`
-test -n "$remote_host" || exit 0
-remote_ip=`dig +short $remote_host`
-pass=`pwgen -s 16`
-augtool -b <<EOF
-defvar webroot /files/etc/apache2/sites-available/default/VirtualHost/Directory[2]
-set \$webroot/directive[last()+1] allow
-set \$webroot/directive[last()]/arg[1] from
-set \$webroot/directive[last()]/arg[2] $remote_ip
-save
-EOF
-service apache2 reload
-user=`echo $JUJU_REMOTE_UNIT | sed -e 's,/,-,'`
-mysql $ROOTARGS -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO \`$user\`@\`$remote_ip\` IDENTIFIED BY '$pass'"
-relation-set dumpurl=/snaps/$name \
-                     user=$user \
-                     password=$pass \
-                     hostname=`unit-get private-address` \
-                     port=3306
+user=${JUJU_REMOTE_UNIT%%/*}
+action=${0##master-relation-}
+case "$action" in
+changed)
+    mysql $ROOTARGS -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO \`$user\`@\`$remote_ip\` IDENTIFIED BY '$pass'"
+    relation-set dumpurl=/snaps/$name \
+                         user=$user \
+                         password=$pass \
+                         hostname=`unit-get private-address` \
+                         port=3306
+    ;;
+departed)
+    mysql $ROOTARGS -e "REVOKE REPLICATION SLAVE, REPLICATION CLIENT ON *.* FROM `$user`@`$remote_ip`"
+    ;;
+broken)
+    # XXX Need some way to tie users to relation ID
+    ;;
+esac

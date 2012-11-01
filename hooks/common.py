@@ -11,6 +11,8 @@ def get_service_user_file(service):
 
 
 def get_service_user(service):
+    if service == '':
+        return ''
     sfile = '/var/lib/juju/%s.service_user' % service
     if os.path.exists(sfile):
         with open(sfile, 'r') as f:
@@ -32,6 +34,7 @@ change_unit = os.environ.get('JUJU_REMOTE_UNIT')
 # We'll name the database the same as the service.
 database_name_file = '.%s_database_name' % (relation_id)
 # change_unit will be None on broken hooks
+database_name = ''
 if change_unit:
     database_name, _ = change_unit.split("/")
 elif os.path.exists(database_name_file):
@@ -39,7 +42,6 @@ elif os.path.exists(database_name_file):
         database_name = dbname.readline()
 else:
     print 'No established database and no REMOTE_UNIT. Exitting gracefully.'
-    sys.exit(0)
 # A user per service unit so we can deny access quickly
 user = get_service_user(database_name)
 connection = None
