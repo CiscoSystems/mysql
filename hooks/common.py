@@ -7,21 +7,22 @@ import subprocess
 import uuid
 
 def get_service_user_file(service):
-    return '/var/lib/juju/%s.service_user' % service
+    return '/var/lib/juju/%s.service_user2' % service
 
 
 def get_service_user(service):
     if service == '':
-        return ''
-    sfile = '/var/lib/juju/%s.service_user' % service
+        return (None, None)
+    sfile = get_service_user_file(service)
     if os.path.exists(sfile):
         with open(sfile, 'r') as f:
-            return f.readline().strip()
-    suser = subprocess.check_output(['pwgen', '-N 1', '15']).strip().split("\n")[0]
+            return (f.readline().strip(), f.readline().strip())
+    (suser, service_password) = subprocess.check_output(['pwgen', '-N 2', '15']).strip().split("\n")
     with open(sfile, 'w') as f:
         f.write("%s\n" % suser)
+        f.write("%s\n" % service_password)
         f.flush()
-    return suser
+    return (suser, service_password)
 
 
 def cleanup_service_user(service):
@@ -37,13 +38,16 @@ database_name_file = '.%s_database_name' % (relation_id)
 database_name = ''
 if change_unit:
     database_name, _ = change_unit.split("/")
+    with open(database_name_file, 'w') as dbnf:
+        dbnf.write("%s\n" % database_name)
+        dbnf.flush()
 elif os.path.exists(database_name_file):
     with open(database_name_file, 'r') as dbname:
-        database_name = dbname.readline()
+        database_name = dbname.readline().strip()
 else:
-    print 'No established database and no REMOTE_UNIT. Exitting gracefully.'
+    print 'No established database and no REMOTE_UNIT.'
 # A user per service unit so we can deny access quickly
-user = get_service_user(database_name)
+user, service_password = get_service_user(database_name)
 connection = None
 lastrun_path = '/var/lib/juju/%s.%s.lastrun' % (database_name,user)
 slave_configured_path = '/var/lib/juju.slave.configured.for.%s' % database_name

@@ -21,7 +21,7 @@ for r in $(relation-ids master) ; do
         fi
         if [ "$runit" = "$JUJU_REMOTE_UNIT" ] ; then
             remote_ip=$rhost
-            if ch_is_ip $remote_ip ; else
+            if ! ch_is_ip $remote_ip ; then
                 remote_ip=$(ch_get_ip $remote_ip)
             fi
         fi
@@ -66,7 +66,8 @@ fi
 chown -v -R www-data.www-data /var/www
 
 user=${JUJU_REMOTE_UNIT%%/*}
-action=${0##master-relation-}
+action=$(basename $0)
+action=${action##master-relation-}
 case "$action" in
 changed)
     mysql $ROOTARGS -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO \`$user\`@\`$remote_ip\` IDENTIFIED BY '$pass'"

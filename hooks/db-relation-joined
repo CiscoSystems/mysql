@@ -18,16 +18,6 @@ def runsql(sql):
 	print "[%s]" % sql
 	cursor.execute(sql)
 
-# Determine if we need to create a new database
-if slave and slave_configured and not broken:
-  print "%s exists, assuming configuration done" % slave_configured_path
-  sys.exit(0)
-
-# Database is created just before relation-set in case other steps fail
-
-# Create database user and grant access
-service_password = "".join(random.sample(string.letters, 10))
-
 runsql(
     "grant replication client on *.* to `%s` identified by '%s'"  % (
     user,
@@ -95,4 +85,3 @@ subprocess.call(
      "password=%s" % service_password,
      'host=%s' % hostname,
      'slave=%s' % slave,])
-

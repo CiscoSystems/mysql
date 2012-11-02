@@ -1,4 +1,11 @@
 #!/bin/sh
 home=`dirname $0`
+# Remove any existing .service_user files, which will cause
+# new users/pw's to be generated, which is a good thing
+old_service_user_files=$(ls /var/lib/juju/$.service_user)
+if [ -n "$old_service_user_files" ] ; then
+    juju-log -l WARNING "Stale users left around, should be revoked: $(cat $old_service_user_files)"
+    rm -f $old_service_user_files
+fi
 $home/install
 exec $home/config-changed
