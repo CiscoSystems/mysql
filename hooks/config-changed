@@ -15,12 +15,12 @@ num_re = re.compile('^[0-9]+$')
 # 16MB
 PAGE_SIZE = 16*1024*1024
 try:
-    32BIT_SYSTEM = sys.maxsize < 2**32
+    IS_32BIT_SYSTEM = sys.maxsize < 2**32
 except OverflowError:
-    32BIT_SYSTEM = True
-32BIT_MEM_LIMIT = human_to_bytes('4G')
+    IS_32BIT_SYSTEM = True
+SYS_MEM_LIMIT = human_to_bytes('4G')
 
-if 32BIT_SYSTEM:
+if IS_32BIT_SYSTEM:
     check_call(['juju-log','-l','INFO','32bit system restrictions in play'])
 
 configs=json.loads(check_output(['config-get','--format=json']))
@@ -46,8 +46,8 @@ def human_to_bytes(human):
     if modifier == '%':
         total_ram = human_to_bytes(get_memtotal())
 
-        if 32BIT_SYSTEM and total_ram > 32BIT_MEM_LIMIT:
-            total_ram = 32BIT_MEM_LIMIT
+        if IS_32BIT_SYSTEM and total_ram > SYS_MEM_LIMIT:
+            total_ram = SYS_MEM_LIMIT
 
         factor = int(human[:-1]) * 0.01
         pctram = total_ram * factor
