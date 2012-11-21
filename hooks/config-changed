@@ -11,6 +11,26 @@ from string import upper
 
 num_re = re.compile('^[0-9]+$')
 
+# There should be a library for this
+def human_to_bytes(human):
+    if num_re.match(human):
+        return human
+    factors = { 'K' : 1024 , 'M' : 1048576, 'G' : 1073741824, 'T' : 1099511627776 }
+    modifier=human[-1]
+    if modifier in factors:
+        return int(human[:-1]) * factors[modifier]
+    if modifier == '%':
+        total_ram = human_to_bytes(get_memtotal())
+
+        if IS_32BIT_SYSTEM and total_ram > SYS_MEM_LIMIT:
+            total_ram = SYS_MEM_LIMIT
+
+        factor = int(human[:-1]) * 0.01
+        pctram = total_ram * factor
+        return int(pctram - (pctram % PAGE_SIZE))
+    raise ValueError("Can only convert K,M,G, or T")
+
+
 # Going for the biggest page size to avoid wasted bytes. InnoDB page size is
 # 16MB
 PAGE_SIZE = 16*1024*1024
@@ -34,25 +54,6 @@ def get_memtotal():
                 (mtot, modifier) = mem.strip().split(' ')
                 return '%s%s' % (mtot, upper(modifier[0]))
 
-
-# There should be a library for this
-def human_to_bytes(human):
-    if num_re.match(human):
-        return human
-    factors = { 'K' : 1024 , 'M' : 1048576, 'G' : 1073741824, 'T' : 1099511627776 }
-    modifier=human[-1]
-    if modifier in factors:
-        return int(human[:-1]) * factors[modifier]
-    if modifier == '%':
-        total_ram = human_to_bytes(get_memtotal())
-
-        if IS_32BIT_SYSTEM and total_ram > SYS_MEM_LIMIT:
-            total_ram = SYS_MEM_LIMIT
-
-        factor = int(human[:-1]) * 0.01
-        pctram = total_ram * factor
-        return int(pctram - (pctram % PAGE_SIZE))
-    raise ValueError("Can only convert K,M,G, or T")
 
 # There is preliminary code for mariadb, but switching
 # from mariadb -> mysql fails badly, so it is disabled for now.
