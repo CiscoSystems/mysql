@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/python
 #
 # Create relations between a shared database to many peers.
 # Join does nothing.   Peer requests access to $DATABASE from $REMOTE_HOST.
@@ -7,63 +7,131 @@
 #
 # Author: Adam Gandelman <adam.gandelman@canonical.com>
 
-set -ue
 
-FORMULA_DIR=$(dirname $0)
+from common import *
+import sys
+import subprocess
+import json
+import socket
+import os
 
-if [[ -e $FORMULA_DIR/shared-db-common ]] ; then
-  . $FORMULA_DIR/shared-db-common
-else
-  juju-log "mysql - shared-db: ERROR Could not load $FORMULA_DIR/shared-db-common"
-fi
 
-shared-db_changed() {
-  juju-log "mysql - shared-db: Relation CHANGED"
+def pwgen():
+    return subprocess.check_output(['pwgen', '-s', '16']).strip()
 
-  DATABASE=`relation-get database`
-  DB_USER=`relation-get username`
-  REMOTE_HOST=`relation-get hostname`
-  PASSWD_FILE="/var/lib/juju/mysql-$DB_USER.passwd"
 
-  # peer not ready, exit 0 and wait.
-  [[ -z $DATABASE ]] || [[ -z $REMOTE_HOST ]] || [[ -z $DB_USER ]] \
-    && echo "DATABASE||REMOTE_HOST||DB_USER not set. Peer not ready?" && exit 0
+def relation_get():
+    return json.loads(subprocess.check_output(
+                        ['relation-get',
+                         '--format',
+                         'json']
+                        )
+                      )
 
-  # to be used for GRANTs
-  # if the remote unit is actually placed on the same system,
-  # it'll need a grant for a user connecting from 127.0.0.1
-  local_hostname=$(hostname -f)
-  if [[ $REMOTE_HOST != $local_hostname ]] ; then
-    REMOTE_IP=$(python -c "import socket ; print socket.gethostbyname('$REMOTE_HOST')")
-  else
-    REMOTE_IP="127.0.0.1"
-  fi
 
-  if [[ ! -e $PASSWD_FILE ]] ; then
-    PASSWORD=$(pwgen -s 16)
-    echo $PASSWORD >$PASSWD_FILE
-  else
-    PASSWORD=$(cat $PASSWD_FILE)
-  fi
+def relation_set(**kwargs):
+    cmd = [ 'relation-set' ]
+    args = []
+    for k, v in kwargs.items():
+        if k == 'rid':
+            cmd.append('-r')
+            cmd.append(v)
+        else:
+            args.append('{}={}'.format(k, v))
+    cmd += args
+    subprocess.check_call(cmd)
 
-  if ! database_exists ; then
-    juju-log "mysql - shared db: Creating database $DATABASE"
-    create_database || exit 1
-    echo "Done"
-  fi
-  if ! grant_exists ; then
-    juju-log "mysql - shared-db: Granting $DB_USER@$REMOTE_HOST access to $DATABASE"
-    create_grant || exit 1
-  fi
-  relation-set db_host=$(hostname -f) password=$PASSWORD
-  juju-log "mysql - shared-db: Returning access to $DATABASE to $DB_USER@$REMOTE_HOST."
-}
 
-RELATION_ACTION=${0##*/shared-db-relation-}
-juju-log "HOOK: shared-db-relation-$RELATION_ACTION fired."
+def shared_db_changed():
 
-case $RELATION_ACTION in
-  "joined") exit 0 ;; # do nothing on join, wait for peer to request access
-  "changed") shared-db_changed ;;
-  *) exit 0 ;;
-esac
+    def configure_db(hostname,
+                     database,
+                     username):
+        passwd_file = "/var/lib/juju/mysql-{}.passwd"\
+                        .format(username)
+        if hostname != local_hostname:
+            remote_ip = socket.gethostbyname(hostname)
+        else:
+            remote_ip = '127.0.0.1'
+
+        if not os.path.exists(passwd_file):
+            password = pwgen()
+            with open(passwd_file, 'w') as pfile:
+                pfile.write(password)
+        else:
+            with open(passwd_file) as pfile:
+                password = pfile.read().strip()
+
+        if not database_exists(database):
+            create_database(database)
+        if not grant_exists(database,
+                            username,
+                            remote_ip):
+            create_grant(database,
+                         username,
+                         remote_ip, password)
+        return password
+
+    settings = relation_get()
+    local_hostname = socket.getfqdn()
+    singleset = set([ 
+        'database',
+        'username',
+        'hostname'
+        ])
+
+    if singleset.issubset(settings):
+        # Process a single database configuration
+        password = configure_db(settings['hostname'],
+                                settings['database'],
+                                settings['username'])
+        relation_set(db_host=local_hostname,
+                     password=password)
+    else:
+        # Process multiple database setup requests.
+        # from incoming relation data:
+        #  nova_database=xxx nova_username=xxx nova_hostname=xxx
+        #  quantum_database=xxx quantum_username=xxx quantum_hostname=xxx
+        # create
+        #{
+        #   "nova": {
+        #        "username": xxx,
+        #        "database": xxx,
+        #        "hostname": xxx
+        #    },
+        #    "quantum": {
+        #        "username": xxx,
+        #        "database": xxx,
+        #        "hostname": xxx
+        #    }
+        #}
+        #
+        databases = {}
+        for k, v in settings.iteritems():
+            db = k.split('_')[0]
+            x = '_'.join(k.split('_')[1:])
+            if db not in databases:
+                databases[db] = {}
+            databases[db][x] = v
+        return_data = {}
+        for db in databases:
+            if singleset.issubset(databases[db]):
+                return_data['_'.join([ db, 'password' ])] = \
+                    configure_db(databases[db]['hostname'],
+                                 databases[db]['database'],
+                                 databases[db]['username'])
+        relation_set(**return_data)
+        relation_set(db_host=local_hostname)
+
+hook = os.path.basename(sys.argv[0])
+hooks = {
+    "shared-db-relation-changed": shared_db_changed
+    }
+try:
+    hook_func = hooks[hook]
+except KeyError:
+    pass
+else:
+    hook_func()
+
+sys.exit(0)
