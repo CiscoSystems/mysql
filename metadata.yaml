@@ -25,3 +25,6 @@ provides:
 requires:
   slave:
     interface: mysql-oneway-replication
+  ha:
+    interface: hacluster
+    scope: container

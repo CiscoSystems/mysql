@@ -31,3 +31,37 @@ options:
         default: 'MIXED'
         type: string
         description: If binlogging is enabled, this is the format that will be used. Ignored when tuning-level == fast.
+    vip:
+        type: string
+        description: "Virtual IP to use to front keystone in ha configuration"
+    vip_iface:
+        type: string
+        default: eth0
+        description: "Network Interface where to place the Virtual IP"
+    vip_cidr:
+        type: int
+        default: 24
+        description: "Netmask that will be used for the Virtual IP"
+    ha-bindiface:
+        type: string
+        default: eth0
+        description: |
+          Default network interface on which HA cluster will bind to communication
+          with the other members of the HA Cluster.
+    ha-mcastport:
+        type: int
+        default: 5410
+        description: |
+          Default multicast port number that will be used to communicate between
+          HA Cluster nodes.
+    block-storage:
+        type: string
+        default: drbd
+        description: |
+          Default block storage type to use when setting up MySQL in HA. Options
+          are 'drbd' or 'ceph'.
+    block-device:
+        type: string
+        default: "/dev/sdb1"
+        description: |
+           "The *available* block device to use for DRBD."
