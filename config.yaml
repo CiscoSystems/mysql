@@ -56,7 +56,6 @@ options:
           HA Cluster nodes.
     block-storage:
         type: string
-        default: drbd
         description: |
           Default block storage type to use when setting up MySQL in HA. Options
           are 'drbd' or 'ceph'.

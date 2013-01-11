@@ -22,6 +22,9 @@ provides:
   local-monitors:
     interface: local-monitors
     scope: container
+peers:
+  cluster:
+    interface: mysql-ha
 requires:
   slave:
     interface: mysql-oneway-replication
