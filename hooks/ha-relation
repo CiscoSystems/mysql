@@ -7,7 +7,7 @@ import os
 import utils
 import drbd
 
-DRBDMARKER = '/var/lib/juju/drbdconfigured'
+STORAGEMARKER = '/var/lib/juju/storageconfigured'
 DRBD_RESOURCE = 'mysql'
 
 config=json.loads(subprocess.check_output(['config-get','--format=json']))
@@ -172,9 +172,9 @@ def configure_drbd():
 
 def cluster_changed():
     # Check that we are not already configured
-    if os.path.exists(DRBDMARKER):
+    if os.path.exists(STORAGEMARKER):
         utils.juju_log('INFO',
-                       'DRBD already configured, not reconfiguring')
+                       'Block storage already configured, not reconfiguring')
         return
 
     utils.juju_log('INFO', 'Begin cluster changed hook.')
@@ -200,7 +200,7 @@ def cluster_changed():
         # TODO: Add support for ceph
         pass
 
-    if storage_configured:
+    if not storage_configured:
         utils.juju_log('WARNING', 'Unable to configure block storage, bailing')
         return
 
@@ -208,7 +208,7 @@ def cluster_changed():
     # DRBD should be mounted on both.
     # TODO: probably would be good idea to check that DRBD has been mounted in var/lib/mysql
     # in primary and secondary, that should say it has been successful.
-    with open(DRBDMARKER, 'w') as marker:
+    with open(STORAGEMARKER, 'w') as marker:
         marker.write('done')
 
     utils.juju_log('INFO', 'End install hook.')
