@@ -13,21 +13,6 @@ DRBD_RESOURCE = 'mysql'
 config=json.loads(subprocess.check_output(['config-get','--format=json']))
 
 
-def relation_set(**kwargs):
-    cmd = [
-        'relation-set'
-        ]
-    args = []
-    for k, v in kwargs.items():
-        if k == 'rid':
-            cmd.append('-r')
-            cmd.append(v)
-        else:
-            args.append('{}={}'.format(k, v))
-    cmd += args
-    subprocess.check_call(cmd)
-
-
 def ha_relation_joined():
     # obtain the block device
     block_storage = config['block-storage']
@@ -74,7 +59,7 @@ def ha_relation_joined():
             'col_mysql_on_drbd':'inf: grp_mysql ms_drbd_mysql:Master'
         }
 
-    relation_set(block_storage=block_storage,
+    utils.relation_set(block_storage=block_storage,
                  block_device=block_device,
                  corosync_bindiface=corosync_bindiface,
                  corosync_mcastport=corosync_mcastport,
@@ -208,6 +193,8 @@ def cluster_changed():
 
     # TODO: if leader fails, then marker should not be placed on secondary node, nor
     # DRBD should be mounted on both.
+    # TODO: probably would be good idea to check that DRBD has been mounted in var/lib/mysql
+    # in primary and secondary, that should say it has been successful.
     with open(DRBDMARKER, 'w') as marker:
         marker.write('done')
 
