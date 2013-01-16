@@ -131,33 +131,9 @@ def emit_drbd_conf():
                                               drbd_conf_context))
 
 
-def cluster_changed():
-    # Check that we are not already configured
-    if os.path.exists(DRBDMARKER):
-        utils.juju_log('INFO',
-                       'DRBD already configured, not reconfiguring')
-        return
-
-    utils.juju_log('INFO', 'Begin cluster changed hook.')
-    if len(get_cluster_nodes()) != 2:
-        utils.juju_log('WARNING', 'Not enough nodes in cluster, bailing')
-        return
-
-    #TODO:
-    # 1. check if block-storage has been set
-    # 2. prepare block storage
-    # 3. emit DRBD conf??? -- maybe not because we need 2 nodes. Unless we call cluster_changed from cluster relationship.
-    if config['block-storage'] is None:
-        utils.juju_log('WARNING', 'NO block storage configured, bailing')
-        return
-    elif config['block-storage'] == 'drbd':
-        subprocess.check_call(['apt-get','-y','install','-qq','drbd8-utils'])
-        if config['block-device'] is None:
-            utils.juju_log('WARNING',
-                           'NO block-device defined, cannot configure DRBD')
-            return
-        drbd.prepare_drbd_disk(config['block-device'])
-        drbd.modprobe_module()
+def configure_drbd():
+    drbd.prepare_drbd_disk(config['block-device'])
+    drbd.modprobe_module()
 
     emit_drbd_conf()
     drbd.create_md(DRBD_RESOURCE)
@@ -190,6 +166,43 @@ def cluster_changed():
     if utils.get_unit_name() == get_cluster_leader() and drbd.is_quorum_primary():
        drbd.put_on_drbd()
        utils.start("mysql")
+
+    return True
+
+
+def cluster_changed():
+    # Check that we are not already configured
+    if os.path.exists(DRBDMARKER):
+        utils.juju_log('INFO',
+                       'DRBD already configured, not reconfiguring')
+        return
+
+    utils.juju_log('INFO', 'Begin cluster changed hook.')
+    if len(get_cluster_nodes()) != 2:
+        utils.juju_log('WARNING', 'Not enough nodes in cluster, bailing')
+        return
+
+    #TODO:
+    # 1. check if block-storage has been set
+    # 2. prepare block storage
+    # 3. emit DRBD conf??? -- maybe not because we need 2 nodes. Unless we call cluster_changed from cluster relationship.
+    if config['block-storage'] == "None":
+        utils.juju_log('WARNING', 'NO block storage configured, bailing')
+        return
+    elif config['block-storage'] == "drbd":
+        if config['block-device'] == "None":
+            utils.juju_log('WARNING',
+                           'NO block-device defined, cannot configure DRBD')
+            return
+        else:
+            storage_configured = configure_drbd()
+    elif config['block-storage'] == "ceph":
+        # TODO: Add support for ceph
+        pass
+
+    if storage_configured:
+        utils.juju_log('WARNING', 'Unable to configure block storage, bailing')
+        return
 
     # TODO: if leader fails, then marker should not be placed on secondary node, nor
     # DRBD should be mounted on both.

@@ -349,3 +349,6 @@ if need_restart:
     except CalledProcessError:
         pass
     check_call(['service','mysql','start'])
+
+if configs['block-storage'] == "drbd":
+    check_call(['apt-get','-y','install','-qq','drbd8-utils'])
