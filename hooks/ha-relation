@@ -6,6 +6,7 @@ import subprocess
 import os
 import utils
 import drbd
+import time
 
 STORAGEMARKER = '/var/lib/juju/storageconfigured'
 DRBD_RESOURCE = 'mysql'
@@ -148,9 +149,9 @@ def configure_drbd():
 
     # Wait for quorum.
     while not drbd.is_quorum_secondary():
-        pass
+        time.sleep(1)
     while not drbd.is_state_inconsistent():
-        pass
+        time.sleep(1)
 
     if utils.get_unit_name() == get_cluster_leader():
         # clear bitmap
@@ -158,13 +159,13 @@ def configure_drbd():
             drbd.clear_bitmap(DRBD_RESOURCE)
         # wait for resources to be UpToDate
         while not drbd.is_state_uptodate():
-            pass
+            time.sleep(1)
         # Make leader primary
         if drbd.is_state_uptodate():
             drbd.make_primary(DRBD_RESOURCE)
         # Wait for node to become primary
         while not drbd.is_quorum_primary():
-            pass
+           time.sleep(1)
         # Format DRBD resource
         if drbd.is_quorum_primary():
             drbd.format_drbd_device()
