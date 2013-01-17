@@ -42,6 +42,7 @@ def ha_relation_joined():
                                 config['vip_cidr'], config['vip_iface']),
                 'res_mysql_fs':'params device="%s" directory="%s" fstype="ext3"' % (DRBD_DEVICE, DRBD_MOUNTPOINT),
                 'res_mysql_drbd':'params drbd_resource="%s"' % DRBD_RESOURCE,
+                'res_mysqld':'op monitor interval=5s',
             }
 
         init_services = {
