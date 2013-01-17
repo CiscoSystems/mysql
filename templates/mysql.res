@@ -1,5 +1,5 @@
 resource mysql {
-        device /dev/drbd0;
+        device {{ drbd_device }};
         disk {{ block_device }}1;
         meta-disk internal;
         {% for unit, address in units.iteritems() -%}

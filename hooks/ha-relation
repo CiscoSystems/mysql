@@ -9,6 +9,8 @@ import drbd
 
 STORAGEMARKER = '/var/lib/juju/storageconfigured'
 DRBD_RESOURCE = 'mysql'
+DRBD_DEVICE = '/dev/drbd0'
+DRBD_MOUNTPOINT = '/var/lib/mysql'
 
 config=json.loads(subprocess.check_output(['config-get','--format=json']))
 
@@ -38,7 +40,7 @@ def ha_relation_joined():
         resource_params = {
                 'res_mysql_vip':'params ip="%s" cidr_netmask="%s" nic="%s"' % (config['vip'],
                                 config['vip_cidr'], config['vip_iface']),
-                'res_mysql_fs':'params device="/dev/drbd0" directory="/var/lib/mysql" fstype="ext3"',
+                'res_mysql_fs':'params device="%s" directory="%s" fstype="ext3"' % (DRBD_DEVICE, DRBD_MOUNTPOINT),
                 'res_mysql_drbd':'params drbd_resource="%s"' % DRBD_RESOURCE,
             }
 
@@ -120,6 +122,7 @@ def get_drbd_conf():
 
     conf = {
             'block_device': config['block-device'],
+            'drbd_device': DRBD_DEVICE,
             'units': cluster_hosts,
                 }
     return conf
