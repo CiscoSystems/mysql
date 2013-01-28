@@ -20,6 +20,17 @@ DRBD_MOUNTPOINT = '/var/lib/mysql'
 config=json.loads(subprocess.check_output(['config-get','--format=json']))
 
 
+def is_relation_made(relation=None):
+    relation_data = []
+    for r_id in (utils.relation_ids(relation) or []):
+        for unit in (utils.relation_list(r_id) or []):
+            relation_data.append(utils.relation_get_dict(relation_id=r_id,
+                                 remote_unit=unit))
+    if not relation_data:
+        return False
+    return True
+
+
 def ha_relation_joined():
     # obtain the block device
     block_storage = config['block-storage']
@@ -29,6 +40,12 @@ def ha_relation_joined():
     # include multicast port and interface to bind to.
     corosync_bindiface = config['ha-bindiface']
     corosync_mcastport = config['ha-mcastport']
+
+    # Starting configuring resources.
+    init_services = {
+            'res_mysqld':'mysql',
+        }
+
 
     if block_storage == "None":
         utils.juju_log('WARNING',
@@ -48,10 +65,6 @@ def ha_relation_joined():
                 'res_mysql_fs':'params device="%s" directory="%s" fstype="ext3"' % (DRBD_DEVICE, DRBD_MOUNTPOINT),
                 'res_mysql_drbd':'params drbd_resource="%s"' % DRBD_RESOURCE,
                 'res_mysqld':'op monitor interval=5s',
-            }
-
-        init_services = {
-                'res_mysqld':'mysql',
             }
 
         groups = {
@@ -83,6 +96,14 @@ def ha_relation_joined():
                  ms=ms)
 
     elif block_storage == "ceph":
+        # If the 'ha' relation has been made *before* the 'ceph' relation,
+        # it doesn't make sense to make it until after the 'ceph' relation
+        # is made
+        if not is_relation_made('ceph'):
+            utils.juju_log('INFO',
+                           'Relation with ceph does not exists, not sending ha relation data')
+            return
+
         resources = {
                 'res_mysql_rbd':'ocf:ceph:rbd',
                 'res_mysql_fs':'ocf:heartbeat:Filesystem',
@@ -94,7 +115,6 @@ def ha_relation_joined():
             }
 
         utils.relation_set(block_storage=block_storage,
-                 block_device=block_device,
                  corosync_bindiface=corosync_bindiface,
                  corosync_mcastport=corosync_mcastport,
                  resources=resources,
@@ -153,6 +173,15 @@ def ceph_changed():
 
     # Configure ceph()
     configure_ceph()
+
+    # If 'ha' relation has been made before the 'ceph' relation
+    # it is important to make sure the ha-relation data is being
+    # sent.
+    if is_relation_made('ha'):
+        utils.juju_log('INFO',
+                       'Relation with ha has been done before ceph relation. Making sure the ha relation data is sent')
+        ha_relation_joined()
+        return
 
 
 def configure_ceph():
@@ -297,6 +326,18 @@ def emit_drbd_conf():
 
 
 def configure_drbd():
+    # Check that we are not already configured
+    if os.path.exists(STORAGEMARKER):
+        utils.juju_log('INFO',
+                       'Block storage already configured, not reconfiguring')
+        return
+
+    # Check for a defined block device.
+    if config['block-device'] == "None":
+        utils.juju_log('WARNING',
+                       'NO block-device defined, cannot configure DRBD')
+        return
+
     drbd.prepare_drbd_disk(config['block-device'])
     drbd.modprobe_module()
 
@@ -332,56 +373,32 @@ def configure_drbd():
        drbd.put_on_drbd()
        utils.start("mysql")
 
-    return True
-
-
-def cluster_changed():
-    # Check that we are not already configured
-    if os.path.exists(STORAGEMARKER):
-        utils.juju_log('INFO',
-                       'Block storage already configured, not reconfiguring')
-        return
-
-    utils.juju_log('INFO', 'Begin cluster changed hook.')
-    if config['block-storage'] == "drbd":
-        #TEMPORARY: Only check that there are minimum of two nodes when
-        # using drbd because we can decide to use just ceph/mysql with 1 node.
-        if len(get_cluster_nodes()) != 2:
-            utils.juju_log('WARNING', 'Not enough nodes in cluster, bailing')
-            return
-
-    #TODO:
-    # 1. check if block-storage has been set
-    # 2. prepare block storage
-    # 3. emit DRBD conf??? -- maybe not because we need 2 nodes. Unless we call cluster_changed from cluster relationship.
-    if config['block-storage'] == "None":
-        utils.juju_log('WARNING', 'NO block storage configured, bailing')
-        return
-    if config['block-size'] == "None":
-        utils.juju_log('WARNING', 'NO block storage size configured, bailing')
-        return
-    elif config['block-storage'] == "drbd":
-        if config['block-device'] == "None":
-            utils.juju_log('WARNING',
-                           'NO block-device defined, cannot configure DRBD')
-            return
-        else:
-            storage_configured = configure_drbd()
-    elif config['block-storage'] == "ceph":
-        # TODO: Configure ceph
-        storage_configured = configure_ceph()
-        pass
-
-    if not storage_configured:
-        utils.juju_log('WARNING', 'Unable to configure block storage, bailing')
-        return
-
     # TODO: if leader fails, then marker should not be placed on secondary node, nor
     # DRBD should be mounted on both.
     # TODO: probably would be good idea to check that DRBD has been mounted in var/lib/mysql
     # in primary and secondary, that should say it has been successful.
     with open(STORAGEMARKER, 'w') as marker:
         marker.write('done')
+
+
+def cluster_changed():
+    utils.juju_log('INFO', 'Begin cluster changed hook.')
+
+    if config['block-storage'] == "None":
+        utils.juju_log('WARNING', 'NO block storage configured, bailing')
+        return
+    if config['block-size'] == "None":
+        utils.juju_log('WARNING', 'NO block storage size configured, bailing')
+        return
+
+    if config['block-storage'] == "drbd":
+        if len(get_cluster_nodes()) != 2:
+            utils.juju_log('WARNING', 'Not enough nodes in cluster, bailing')
+            return
+        else:
+            configure_drbd()
+    elif config['block-storage'] == "ceph":
+        pass
 
     utils.juju_log('INFO', 'End install hook.')
 
