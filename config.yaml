@@ -60,8 +60,23 @@ options:
         description: |
           Default block storage type to use when setting up MySQL in HA. Options
           are 'drbd' or 'ceph'.
+    block-size:
+        type: string
+        default: 5G
+        description: |
+          Default block storage size to create when setting up MySQL block storage.
+          This value should be specified in GB (e.g. 100G).
+    rbd-name:
+        type: string
+        default: mysql1
+        description: |
+          The name that will be used to create the Ceph's RBD image with. If the
+          image name exists in Ceph, it will be re-used and the data will be
+          overwritten.
     block-device:
         type: string
         default: "/dev/sdb1"
         description: |
-           "The *available* block device to use for DRBD."
+           The *available* block device to use for DRBD. May also be set to None
+           for deployments that will not need local storage (e.g. Ceph/RBD-backed
+           volumes).

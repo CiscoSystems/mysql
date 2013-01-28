@@ -4,9 +4,13 @@ import json
 import sys
 import subprocess
 import os
-import utils
-import drbd
+import re
 import time
+import commands
+
+import utils
+import ceph
+import drbd
 
 STORAGEMARKER = '/var/lib/juju/storageconfigured'
 DRBD_RESOURCE = 'mysql'
@@ -66,7 +70,7 @@ def ha_relation_joined():
                 'col_mysql_on_drbd':'inf: grp_mysql ms_drbd_mysql:Master'
             }
 
-    utils.relation_set(block_storage=block_storage,
+        utils.relation_set(block_storage=block_storage,
                  block_device=block_device,
                  corosync_bindiface=corosync_bindiface,
                  corosync_mcastport=corosync_mcastport,
@@ -78,9 +82,162 @@ def ha_relation_joined():
                  groups=groups,
                  ms=ms)
 
+    elif block_storage == "ceph":
+        resources = {
+                'res_mysql_rbd':'ocf:ceph:rbd',
+                'res_mysql_fs':'ocf:heartbeat:Filesystem',
+            }
+
+        resource_params = {
+                'res_mysql_rbd':'params name="test1" pool="images" user="mysql" secret="/etc/ceph/ceph.client.mysql.key"',
+                'res_mysql_fs':'params device="/dev/rbd/rbd/mysql" directory="/var/lib/mysql" fstype="ext4"',
+            }
+
+        utils.relation_set(block_storage=block_storage,
+                 block_device=block_device,
+                 corosync_bindiface=corosync_bindiface,
+                 corosync_mcastport=corosync_mcastport,
+                 resources=resources,
+                 resource_params=resource_params,
+                 init_services=init_services)
+
 
 def ha_relation_changed():
     pass
+
+
+def ceph_joined():
+    ceph_dir = "/etc/ceph"
+    if not os.path.isdir(ceph_dir):
+        os.mkdir(ceph_dir)
+    utils.install('ceph-common', 'ceph-resource-agents')
+
+
+def ceph_changed():
+    # TODO: ask james: What happens if the relation data has changed?
+    # do we reconfigure ceph? What do we do with the data?
+    service_name = utils.get_unit_name().replace('-','/').split('/')[0]
+    keyring = "/etc/ceph/ceph.client.%s.keyring" % service_name
+    keyfile = "/etc/ceph/ceph.client.%s.key" % service_name
+    key = utils.relation_get('key')
+
+    if key:
+        # create keyring file
+        if not os.path.exists(keyring):
+            ceph.create_keyring(service_name, keyring, key)
+        # create a file containing the key
+        if not os.path.exists(keyfile):
+            fd = open(keyfile, 'w')
+            fd.write(key)
+            fd.close()
+    else:
+        sys.exit(0)
+
+    # emit ceph config
+    hosts = get_ceph_nodes()
+    mon_hosts = " ".join(map(str, hosts))
+    conf_context = {
+        'auth': utils.relation_get('auth'),
+        'keyring': keyring,
+        'mon_hosts': mon_hosts,
+        }
+    with open('/etc/ceph/ceph.conf', 'w') as ceph_conf:
+        ceph_conf.write(utils.render_template('ceph.conf',
+                                              conf_context))
+
+    # Create the images pool if it does not already exist
+    (status, output) = commands.getstatusoutput("rados --id %s lspools | grep images" % service_name)
+    if not output:
+        utils.juju_log('INFO','Creating image pool')
+        ceph.create_image_pool(service_name)
+
+    # Configure ceph()
+    configure_ceph()
+
+
+def configure_ceph():
+    service_name = utils.get_unit_name().replace('-','/').split('/')[0]
+    keyfile = "/etc/ceph/ceph.client.%s.key" % service_name
+    block_sizemb = int(config['block-size'].split('G')[0]) * 1024
+    image_name = config['rbd-name']
+    fstype = 'ext4'
+    data_src = '/var/lib/mysql'
+    blk_device = '/dev/rbd/images/%s' % image_name
+
+    # modprobe the kernel module
+    utils.juju_log('INFO','Loading kernel module')
+    ceph.modprobe_kernel_module('rbd')
+
+    # Stopping MySQL
+    if utils.running('mysql'):
+        utils.juju_log('INFO','Stopping MySQL before configuring RBD.')
+        utils.stop('mysql')
+
+    # configure mysql for ceph storage options
+    if utils.get_unit_name() != get_cluster_leader():
+        utils.juju_log('INFO','This is not the cluster leader. Not configuring RBD.')
+        return True
+
+    if utils.get_unit_name() == get_cluster_leader():
+        # create an image/block device
+        (status, output) = commands.getstatusoutput('rbd list --id %s --pool images' % service_name)
+        show_re = re.compile("^%s$" % image_name)
+        rbd = show_re.search(output)
+        if not rbd:
+            utils.juju_log('INFO','Creating RBD Image')
+            ceph.create_image(service_name, image_name, str(block_sizemb))
+        else:
+            utils.juju_log('INFO',
+                       'Looks like RBD already exists. Not creating a new one')
+
+        (status, output) = commands.getstatusoutput('rbd showmapped')
+        show_re = re.compile("%s" % image_name)
+        mapped = show_re.search(output)
+        if not mapped:
+            # map block storage
+            utils.juju_log('INFO','Mapping RBD Image as a Block Device')
+            ceph.map_block_storage(service_name, image_name, keyfile)
+        else:
+            utils.juju_log('INFO',
+                       'Looks like RBD is already mapped. Not re-mapping.')
+
+        # make file system
+        # TODO: What happens if for whatever reason this is run again and
+        # the data is already in the rbd device and/or is mounted??
+        # When it is mounted already, it will fail to make the fs
+        utils.juju_log('INFO', 'Trying to move data over to RBD.')
+        if not filesystem_mounted(data_src):
+            utils.juju_log('INFO', 'Formating RBD.')
+            ceph.make_filesystem(service_name, blk_device, fstype)
+
+            utils.juju_log('INFO', 'Copying MySQL data to RBD.')
+            # mount block device to temporary location and copy the data
+            ceph.place_data_on_ceph(service_name, blk_device, data_src, fstype)
+
+            # Make files be owned by mysql user/pass
+            cmd = ['chown', '-R', 'mysql:mysql', data_src]
+            subprocess.check_call(cmd)
+        else:
+            utils.juju_log('INFO',
+                       'Looks like data is already on the RBD, skipping...')
+
+        if not utils.running('mysql'):
+            utils.start('mysql')
+
+    return True
+
+
+def filesystem_mounted(fs):
+    return subprocess.call(['grep', '-wqs', fs, '/proc/mounts']) == 0
+
+
+def get_ceph_nodes():
+    hosts = []
+    for r_id in utils.relation_ids('ceph'):
+        for unit in utils.relation_list(r_id):
+            hosts.append(utils.relation_get_dict(relation_id=r_id,
+                                                 remote_unit=unit)['private-address'])
+    return hosts
 
 
 def get_cluster_nodes():
@@ -186,9 +343,12 @@ def cluster_changed():
         return
 
     utils.juju_log('INFO', 'Begin cluster changed hook.')
-    if len(get_cluster_nodes()) != 2:
-        utils.juju_log('WARNING', 'Not enough nodes in cluster, bailing')
-        return
+    if config['block-storage'] == "drbd":
+        #TEMPORARY: Only check that there are minimum of two nodes when
+        # using drbd because we can decide to use just ceph/mysql with 1 node.
+        if len(get_cluster_nodes()) != 2:
+            utils.juju_log('WARNING', 'Not enough nodes in cluster, bailing')
+            return
 
     #TODO:
     # 1. check if block-storage has been set
@@ -196,6 +356,9 @@ def cluster_changed():
     # 3. emit DRBD conf??? -- maybe not because we need 2 nodes. Unless we call cluster_changed from cluster relationship.
     if config['block-storage'] == "None":
         utils.juju_log('WARNING', 'NO block storage configured, bailing')
+        return
+    if config['block-size'] == "None":
+        utils.juju_log('WARNING', 'NO block storage size configured, bailing')
         return
     elif config['block-storage'] == "drbd":
         if config['block-device'] == "None":
@@ -205,7 +368,8 @@ def cluster_changed():
         else:
             storage_configured = configure_drbd()
     elif config['block-storage'] == "ceph":
-        # TODO: Add support for ceph
+        # TODO: Configure ceph
+        storage_configured = configure_ceph()
         pass
 
     if not storage_configured:
@@ -221,18 +385,13 @@ def cluster_changed():
 
     utils.juju_log('INFO', 'End install hook.')
 
-def show_drbd():
-    import commands
-    (status, output) = commands.getstatusoutput("drbd-overview")
-    utils.juju_log('INFO', '############################################################3')
-    utils.juju_log('INFO', output)
-    utils.juju_log('INFO', '############################################################3')
 
 hooks = {
-    # TODO: cluster-relation-departed (remove drbdconfigured file)
     "cluster-relation-changed": cluster_changed,
     "ha-relation-joined": ha_relation_joined,
     "ha-relation-changed": ha_relation_changed,
+    "ceph-relation-joined": ceph_joined,
+    "ceph-relation-changed": ceph_changed,
 }
 
 # keystone-hooks gets called by symlink corresponding to the requested relation
