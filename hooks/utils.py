@@ -383,3 +383,23 @@ def get_network_address(iface):
         return str(ip.network)
     else:
         return None
+
+
+def is_clustered():
+    for r_id in (relation_ids('ha') or []):
+        for unit in (relation_list(r_id) or []):
+            relation_data = \
+                relation_get_dict(relation_id=r_id,
+                                  remote_unit=unit)
+            if 'clustered' in relation_data:
+                return True
+    return False
+
+
+def is_leader():
+    status = execute('crm resource show res_mysql_vip', echo=True)[0].strip()
+    hostname = execute('hostname', echo=True)[0].strip()
+    if hostname in status:
+        return True
+    else:
+        return False

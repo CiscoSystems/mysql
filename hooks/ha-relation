@@ -113,6 +113,8 @@ def ha_relation_joined():
         resources = {
                 'res_mysql_rbd':'ocf:ceph:rbd',
                 'res_mysql_fs':'ocf:heartbeat:Filesystem',
+                'res_mysql_vip':'ocf:heartbeat:IPaddr2',
+                'res_mysqld':'upstart:mysql',
             }
 
         resource_params = {
@@ -120,6 +122,13 @@ def ha_relation_joined():
                                 config['rbd-name'], SERVICE_NAME, KEYFILE),
                 'res_mysql_fs':'params device="/dev/rbd/images/%s" directory="%s" fstype="ext4"' % (
                                 config['rbd-name'], DATA_SRC_DST),
+                'res_mysql_vip':'params ip="%s" cidr_netmask="%s" nic="%s"' % (config['vip'],
+                                config['vip_cidr'], config['vip_iface']),
+                'res_mysqld':'op monitor interval=5s',
+            }
+
+        groups = {
+                'grp_mysql':'res_mysql_rbd res_mysql_fs res_mysql_vip res_mysqld',
             }
 
         utils.relation_set(block_storage=block_storage,
@@ -131,14 +140,24 @@ def ha_relation_joined():
 
 
 def ha_relation_changed():
-    pass
+    # TODO: Add remaining stuff (is_clustered and is_leader)
+    return
+    relation_data = utils.relation_get_dict()
+    if ('clustered' in relation_data and
+        utils.is_leader()):
+        utils.juju_log('Cluster configured, notifying other services')
+        # Tell all related services to start using
+        # the VIP
+        for r_id in utils.relation_ids('shared-db'):
+            utils.relation_set(rid=r_id,
+                           db_host=config['vip'])
 
 
 def ceph_joined():
     ceph_dir = "/etc/ceph"
     if not os.path.isdir(ceph_dir):
         os.mkdir(ceph_dir)
-    utils.install('ceph-common', 'ceph-resource-agents')
+    utils.install('ceph-common')
 
 
 def ceph_changed():
