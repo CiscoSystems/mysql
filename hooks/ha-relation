@@ -120,7 +120,7 @@ def ha_relation_joined():
         resource_params = {
                 'res_mysql_rbd':'params name="%s" pool="images" user="%s" secret="%s"' % (
                                 config['rbd-name'], SERVICE_NAME, KEYFILE),
-                'res_mysql_fs':'params device="/dev/rbd/images/%s" directory="%s" fstype="ext4"' % (
+                'res_mysql_fs':'params device="/dev/rbd/images/%s" directory="%s" fstype="ext4" op start start-delay="10s"' % (
                                 config['rbd-name'], DATA_SRC_DST),
                 'res_mysql_vip':'params ip="%s" cidr_netmask="%s" nic="%s"' % (config['vip'],
                                 config['vip_cidr'], config['vip_iface']),
@@ -136,7 +136,8 @@ def ha_relation_joined():
                  corosync_mcastport=corosync_mcastport,
                  resources=resources,
                  resource_params=resource_params,
-                 init_services=init_services)
+                 init_services=init_services,
+                 groups=groups)
 
 
 def ha_relation_changed():
@@ -227,7 +228,7 @@ def configure_ceph():
     # configure mysql for ceph storage options
     if utils.get_unit_name() != get_cluster_leader():
         utils.juju_log('INFO','This is not the cluster leader. Not configuring RBD.')
-        return True
+        return
 
     if utils.get_unit_name() == get_cluster_leader():
         # create an image/block device
@@ -274,8 +275,6 @@ def configure_ceph():
 
         if not utils.running('mysql'):
             utils.start('mysql')
-
-    return True
 
 
 def filesystem_mounted(fs):
