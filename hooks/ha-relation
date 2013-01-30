@@ -4,7 +4,6 @@ import json
 import sys
 import subprocess
 import os
-import re
 import time
 import commands
 
@@ -180,7 +179,7 @@ def ceph_changed():
 
     # emit ceph config
     hosts = get_ceph_nodes()
-    mon_hosts = " ".join(map(str, hosts))
+    mon_hosts = ",".join(map(str, hosts))
     conf_context = {
         'auth': utils.relation_get('auth'),
         'keyring': KEYRING,
@@ -233,8 +232,7 @@ def configure_ceph():
     if utils.get_unit_name() == get_cluster_leader():
         # create an image/block device
         (status, output) = commands.getstatusoutput('rbd list --id %s --pool images' % SERVICE_NAME)
-        show_re = re.compile("^%s$" % image_name)
-        rbd = show_re.search(output)
+        rbd = image_name in output
         if not rbd:
             utils.juju_log('INFO','Creating RBD Image')
             ceph.create_image(SERVICE_NAME, image_name, str(block_sizemb))
@@ -243,8 +241,7 @@ def configure_ceph():
                        'Looks like RBD already exists. Not creating a new one')
 
         (status, output) = commands.getstatusoutput('rbd showmapped')
-        show_re = re.compile("%s" % image_name)
-        mapped = show_re.search(output)
+        mapped = image_name in output
         if not mapped:
             # map block storage
             utils.juju_log('INFO','Mapping RBD Image as a Block Device')
