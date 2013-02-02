@@ -76,8 +76,8 @@ def shared_db_changed():
     utils.juju_log('INFO',
                    '@@@@@@@@@@@@@@@@@@@@@ unit name = %s' % utils.get_unit_name())
     utils.juju_log('INFO',
-                   '@@@@@@@@@@@@@@@@@@@@@ cluster_leader = %s' % utils.get_cluster_leader())
-    if (utils.get_unit_name() != utils.get_cluster_leader()) and not utils.is_clustered():
+                   '@@@@@@@@@@@@@@@@@@@@@ cluster_leader = %s' % utils.get_peer_leader())
+    if not utils.is_peer_leader() and not utils.is_clustered():
         utils.juju_log('INFO', 'Looks like this unit is not the peer leader and is not clustered, bailing.')
         return
     if utils.is_clustered() and not utils.is_leader():

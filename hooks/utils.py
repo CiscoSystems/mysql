@@ -405,7 +405,7 @@ def is_leader():
         return False
 
 
-def get_cluster_leader():
+def get_peer_leader():
     # Obtains the unit name of the first service unit deploy.
     # e.g. mysql-0
     units = []
@@ -415,3 +415,22 @@ def get_cluster_leader():
             units.append(unit.replace('/','-'))
 
     return min(unit for unit in units)
+
+
+def is_peer_leader():
+    oldest_unit = get_peer_leader():
+
+    if get_unit_name() == oldest_unit:
+        return True
+    return False
+
+
+def is_relation_made(relation=None):
+    relation_data = []
+    for r_id in (relation_ids(relation) or []):
+        for unit in (relation_list(r_id) or []):
+            relation_data.append(relation_get_dict(relation_id=r_id,
+                                 remote_unit=unit))
+    if not relation_data:
+        return False
+    return True
