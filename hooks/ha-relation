@@ -106,8 +106,11 @@ def ha_relation_joined():
         # is made
         if not is_relation_made('ceph'):
             utils.juju_log('INFO',
-                           'Relation with ceph does not exists, not sending ha relation data')
+                    '*ceph* relation does not exist. Not sending *ha* relation data')
             return
+        else:
+            utils.juju_log('INFO',
+                    '*ceph* relation exists. Sending *ha* relation data')
 
         resources = {
                 'res_mysql_rbd':'ocf:ceph:rbd',
@@ -130,22 +133,22 @@ def ha_relation_joined():
                 'grp_mysql':'res_mysql_rbd res_mysql_fs res_mysql_vip res_mysqld',
             }
 
-        utils.relation_set(block_storage=block_storage,
-                 corosync_bindiface=corosync_bindiface,
-                 corosync_mcastport=corosync_mcastport,
-                 resources=resources,
-                 resource_params=resource_params,
-                 init_services=init_services,
-                 groups=groups)
+        for rel_id in utils.relation_ids('ha'):
+            utils.relation_set(rid=rel_id,
+                               block_storage=block_storage,
+                               corosync_bindiface=corosync_bindiface,
+                               corosync_mcastport=corosync_mcastport,
+                               resources=resources,
+                               resource_params=resource_params,
+                               init_services=init_services,
+                               groups=groups)
 
 
 def ha_relation_changed():
-    # TODO: Add remaining stuff (is_clustered and is_leader)
-    return
     relation_data = utils.relation_get_dict()
     if ('clustered' in relation_data and
         utils.is_leader()):
-        utils.juju_log('Cluster configured, notifying other services')
+        utils.juju_log('INFO', 'Cluster configured, notifying other services')
         # Tell all related services to start using
         # the VIP
         for r_id in utils.relation_ids('shared-db'):
@@ -154,13 +157,19 @@ def ha_relation_changed():
 
 
 def ceph_joined():
+    utils.juju_log('INFO', 'Start Ceph Relation Joined')
+
     ceph_dir = "/etc/ceph"
     if not os.path.isdir(ceph_dir):
         os.mkdir(ceph_dir)
     utils.install('ceph-common')
 
+    utils.juju_log('INFO', 'Finish Ceph Relation Joined')
+
 
 def ceph_changed():
+    utils.juju_log('INFO', 'Start Ceph Relation Changed')
+
     # TODO: ask james: What happens if the relation data has changed?
     # do we reconfigure ceph? What do we do with the data?
     key = utils.relation_get('key')
@@ -190,8 +199,9 @@ def ceph_changed():
                                               conf_context))
 
     # Create the images pool if it does not already exist
-    (status, output) = commands.getstatusoutput("rados --id %s lspools | grep images" % SERVICE_NAME)
-    if not output:
+    (status, output) = commands.getstatusoutput("rados --id %s lspools" % SERVICE_NAME)
+    pools = "images" in output
+    if not pools:
         utils.juju_log('INFO','Creating image pool')
         ceph.create_image_pool(SERVICE_NAME)
 
@@ -203,12 +213,19 @@ def ceph_changed():
     # sent.
     if is_relation_made('ha'):
         utils.juju_log('INFO',
-                       'Relation with ha has been done before ceph relation. Making sure the ha relation data is sent')
+                       '*ha* relation exists. Making sure the ha relation data is sent.')
         ha_relation_joined()
         return
+    else:
+        utils.juju_log('INFO',
+                       '*ha* relation does not exist.')
+
+    utils.juju_log('INFO', 'Finish Ceph Relation Changed')
 
 
 def configure_ceph():
+    utils.juju_log('INFO', 'Start Ceph Configuration')
+
     block_sizemb = int(config['block-size'].split('G')[0]) * 1024
     image_name = config['rbd-name']
     fstype = 'ext4'
@@ -234,17 +251,17 @@ def configure_ceph():
         (status, output) = commands.getstatusoutput('rbd list --id %s --pool images' % SERVICE_NAME)
         rbd = image_name in output
         if not rbd:
-            utils.juju_log('INFO','Creating RBD Image')
+            utils.juju_log('INFO', 'Creating RBD Image...')
             ceph.create_image(SERVICE_NAME, image_name, str(block_sizemb))
         else:
             utils.juju_log('INFO',
-                       'Looks like RBD already exists. Not creating a new one')
+                       'Looks like RBD already exists. Not creating a new one.')
 
         (status, output) = commands.getstatusoutput('rbd showmapped')
         mapped = image_name in output
         if not mapped:
             # map block storage
-            utils.juju_log('INFO','Mapping RBD Image as a Block Device')
+            utils.juju_log('INFO', 'Mapping RBD Image as a Block Device')
             ceph.map_block_storage(SERVICE_NAME, image_name, KEYFILE)
         else:
             utils.juju_log('INFO',
@@ -272,6 +289,8 @@ def configure_ceph():
 
         if not utils.running('mysql'):
             utils.start('mysql')
+
+    utils.juju_log('INFO', 'Finish Ceph Configuration')
 
 
 def filesystem_mounted(fs):

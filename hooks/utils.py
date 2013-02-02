@@ -403,3 +403,15 @@ def is_leader():
         return True
     else:
         return False
+
+
+def get_cluster_leader():
+    # Obtains the unit name of the first service unit deploy.
+    # e.g. mysql-0
+    units = []
+    local = units.append(get_unit_name())
+    for r_id in relation_ids('cluster'):
+        for unit in relation_list(r_id):
+            units.append(unit.replace('/','-'))
+
+    return min(unit for unit in units)

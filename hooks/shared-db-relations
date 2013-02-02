@@ -14,6 +14,7 @@ import subprocess
 import json
 import socket
 import os
+import utils
 
 
 def pwgen():
@@ -71,6 +72,20 @@ def shared_db_changed():
                          username,
                          remote_ip, password)
         return password
+
+    utils.juju_log('INFO',
+                   '@@@@@@@@@@@@@@@@@@@@@ unit name = %s' % utils.get_unit_name())
+    utils.juju_log('INFO',
+                   '@@@@@@@@@@@@@@@@@@@@@ cluster_leader = %s' % utils.get_cluster_leader())
+    if (utils.get_unit_name() != utils.get_cluster_leader()) and not utils.is_clustered():
+        utils.juju_log('INFO', 'Looks like this unit is not the peer leader and is not clustered, bailing.')
+        return
+    if utils.is_clustered() and not utils.is_leader():
+        # If this unit is clustered, but not the leader, then
+        # it doesn't make sense to do any changes on the relation
+        # because these will be done by the leader.
+        utils.juju_log('INFO', 'Looks like this is not the cluster leader, bailing.')
+        return
 
     settings = relation_get()
     local_hostname = socket.getfqdn()
