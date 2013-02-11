@@ -22,6 +22,9 @@ SERVICE_NAME = utils.get_unit_name().replace('-','/').split('/')[0]
 KEYRING = "/etc/ceph/ceph.client.%s.keyring" % SERVICE_NAME
 KEYFILE = "/etc/ceph/ceph.client.%s.key" % SERVICE_NAME
 
+# MySQL
+MYSQL_PASSFILE = '/var/lib/juju/mysql.passwd'
+
 config=json.loads(subprocess.check_output(['config-get','--format=json']))
 
 
@@ -398,6 +401,10 @@ def configure_drbd():
 def cluster_changed():
     utils.juju_log('INFO', 'Begin cluster changed hook.')
 
+    if not utils.is_peer_leader():
+        # if not the leader, then obtain password from the relation if exists
+        pass
+
     if config['block-storage'] == "None":
         utils.juju_log('WARNING', 'NO block storage configured, bailing')
         return
@@ -412,6 +419,12 @@ def cluster_changed():
         else:
             configure_drbd()
     elif config['block-storage'] == "ceph":
+        pass
+
+    if utils.is_peer_leader():
+        #TODO: sent password from file to the relation data.
+        #with open('/var/lib/juju/mysql.passwd','r') as rpw:
+        #root_pass = rpw.read()
         pass
 
     utils.juju_log('INFO', 'End install hook.')

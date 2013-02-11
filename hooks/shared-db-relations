@@ -73,6 +73,9 @@ def shared_db_changed():
                          remote_ip, password)
         return password
 
+
+    # TODO: I think we need to refactor this so the peers get the same password for the services.
+    # note that we would probably need a is_peered() function that simply checks for peers.
     utils.juju_log('INFO',
                    '@@@@@@@@@@@@@@@@@@@@@ unit name = %s' % utils.get_unit_name())
     utils.juju_log('INFO',
