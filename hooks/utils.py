@@ -405,24 +405,34 @@ def is_leader():
         return False
 
 
-def get_peer_leader():
-    # Obtains the unit name of the first service unit deploy.
-    # e.g. mysql-0
-    units = []
-    local = units.append(get_unit_name())
-    for r_id in relation_ids('cluster'):
-        for unit in relation_list(r_id):
-            units.append(unit.replace('/','-'))
-
-    return min(unit for unit in units)
+def peer_units():
+    peers = []
+    for r_id in (relation_ids('cluster') or []):
+        for unit in (relation_list(r_id) or []):
+            peers.append(unit)
+    return peers
 
 
-def is_peer_leader():
-    oldest_unit = get_peer_leader():
+def oldest_peer(peers):
+    local_unit_no = os.getenv('JUJU_UNIT_NAME').split('/')[1]
+    for peer in peers:
+        remote_unit_no = peer.split('/')[1]
+        if remote_unit_no < local_unit_no:
+            return False
+    return True
 
-    if get_unit_name() == oldest_unit:
-        return True
-    return False
+
+def eligible_leader():
+    if is_clustered():
+        if not is_leader():
+            juju_log('INFO', 'Deferring action to CRM leader.')
+            return False
+    else:
+        peers = peer_units()
+        if peers and not oldest_peer(peers):
+            juju_log('INFO', 'Deferring action to oldest service unit.')
+            return False
+    return True
 
 
 def is_relation_made(relation=None):

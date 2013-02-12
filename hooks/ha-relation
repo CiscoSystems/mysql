@@ -234,11 +234,10 @@ def configure_ceph():
         utils.stop('mysql')
 
     # configure mysql for ceph storage options
-    if not utils.is_peer_leader():
+    if not utils.eligible_leader():
         utils.juju_log('INFO','This is not the peer leader. Not configuring RBD.')
         return
-
-    if utils.is_peer_leader():
+    elif utils.eligible_leader():
         # create an image/block device
         (status, output) = commands.getstatusoutput('rbd list --id %s --pool images' % SERVICE_NAME)
         rbd = image_name in output
@@ -281,6 +280,8 @@ def configure_ceph():
 
         if not utils.running('mysql'):
             utils.start('mysql')
+    else:
+        return
 
     utils.juju_log('INFO', 'Finish Ceph Configuration')
 
@@ -368,7 +369,7 @@ def configure_drbd():
     while not drbd.is_state_inconsistent():
         time.sleep(1)
 
-    if utils.is_peer_leader():
+    if utils.eligible_leader():
         # clear bitmap
         if drbd.is_quorum_secondary() and drbd.is_state_inconsistent():
             drbd.clear_bitmap(DRBD_RESOURCE)
@@ -386,7 +387,7 @@ def configure_drbd():
             drbd.format_drbd_device()
 
     utils.stop("mysql")
-    if utils.is_peer_leader() and drbd.is_quorum_primary():
+    if utils.eligible_leader() and drbd.is_quorum_primary():
        drbd.put_on_drbd()
        utils.start("mysql")
 
@@ -401,9 +402,12 @@ def configure_drbd():
 def cluster_changed():
     utils.juju_log('INFO', 'Begin cluster changed hook.')
 
-    if not utils.is_peer_leader():
-        # if not the leader, then obtain password from the relation if exists
-        pass
+    if not utils.eligible_leader():
+        root_pass = utils.relation_get("root_pass")
+        if root_pass:
+            with open(MYSQL_PASSFILE, 'w') as rpw:
+               rpw.write(root_pass)
+               rpw.close()
 
     if config['block-storage'] == "None":
         utils.juju_log('WARNING', 'NO block storage configured, bailing')
@@ -421,11 +425,9 @@ def cluster_changed():
     elif config['block-storage'] == "ceph":
         pass
 
-    if utils.is_peer_leader():
-        #TODO: sent password from file to the relation data.
-        #with open('/var/lib/juju/mysql.passwd','r') as rpw:
-        #root_pass = rpw.read()
-        pass
+    if utils.eligible_leader():
+        with open(MYSQL_PASSFILE,'r') as rpw:
+            utils.relation_set(root_pass=rpw.read())
 
     utils.juju_log('INFO', 'End install hook.')
 
