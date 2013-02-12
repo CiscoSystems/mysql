@@ -23,7 +23,7 @@ KEYRING = "/etc/ceph/ceph.client.%s.keyring" % SERVICE_NAME
 KEYFILE = "/etc/ceph/ceph.client.%s.key" % SERVICE_NAME
 
 # MySQL
-MYSQL_PASSFILE = '/var/lib/juju/mysql.passwd'
+MYSQL_PASSFILE = '/var/lib/mysql/mysql.passwd'
 
 config=json.loads(subprocess.check_output(['config-get','--format=json']))
 
@@ -402,13 +402,6 @@ def configure_drbd():
 def cluster_changed():
     utils.juju_log('INFO', 'Begin cluster changed hook.')
 
-    if not utils.eligible_leader():
-        root_pass = utils.relation_get("root_pass")
-        if root_pass:
-            with open(MYSQL_PASSFILE, 'w') as rpw:
-               rpw.write(root_pass)
-               rpw.close()
-
     if config['block-storage'] == "None":
         utils.juju_log('WARNING', 'NO block storage configured, bailing')
         return
@@ -424,10 +417,6 @@ def cluster_changed():
             configure_drbd()
     elif config['block-storage'] == "ceph":
         pass
-
-    if utils.eligible_leader():
-        with open(MYSQL_PASSFILE,'r') as rpw:
-            utils.relation_set(root_pass=rpw.read())
 
     utils.juju_log('INFO', 'End install hook.')
 

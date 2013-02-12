@@ -7,7 +7,7 @@ import subprocess
 import uuid
 
 def get_service_user_file(service):
-    return '/var/lib/juju/%s.service_user2' % service
+    return '/var/lib/mysql/%s.service_user2' % service
 
 
 def get_service_user(service):
@@ -58,7 +58,7 @@ broken = os.path.exists(broken_path)
 
 def get_db_cursor():
     # Connect to mysql
-    passwd = open("/var/lib/juju/mysql.passwd").read().strip()
+    passwd = open("/var/lib/mysql/mysql.passwd").read().strip()
     connection = MySQLdb.connect(user="root", host="localhost", passwd=passwd)
     return connection.cursor()
 

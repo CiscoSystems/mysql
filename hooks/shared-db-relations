@@ -48,7 +48,7 @@ def shared_db_changed():
     def configure_db(hostname,
                      database,
                      username):
-        passwd_file = "/var/lib/juju/mysql-{}.passwd"\
+        passwd_file = "/var/lib/mysql/mysql-{}.passwd"\
                         .format(username)
         if hostname != local_hostname:
             remote_ip = socket.gethostbyname(hostname)
@@ -74,20 +74,15 @@ def shared_db_changed():
         return password
 
 
-    # TODO: I think we need to refactor this so the peers get the same password for the services.
-    # note that we would probably need a is_peered() function that simply checks for peers.
-    utils.juju_log('INFO',
-                   '@@@@@@@@@@@@@@@@@@@@@ unit name = %s' % utils.get_unit_name())
-    utils.juju_log('INFO',
-                   '@@@@@@@@@@@@@@@@@@@@@ cluster_leader = %s' % utils.get_peer_leader())
-    if not utils.is_peer_leader() and not utils.is_clustered():
-        utils.juju_log('INFO', 'Looks like this unit is not the peer leader and is not clustered, bailing.')
-        return
-    if utils.is_clustered() and not utils.is_leader():
-        # If this unit is clustered, but not the leader, then
-        # it doesn't make sense to do any changes on the relation
-        # because these will be done by the leader.
-        utils.juju_log('INFO', 'Looks like this is not the cluster leader, bailing.')
+    if not utils.is_clustered():
+        utils.juju_log('INFO',
+                       'MySQL service is not clustered, continuing shared-db relation')
+    elif utils.eligible_leader():
+        utils.juju_log('INFO',
+                       'Cluster leader, continuing shared-db relation')
+    else:
+        utils.juju_log('INFO',
+                       'This is not the Cluster leader, bailing shared-db relation...')
         return
 
     settings = relation_get()

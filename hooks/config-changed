@@ -90,7 +90,7 @@ for source in apt_sources:
     check_call(['add-apt-repository','-y','deb http://%s %s main' % (source, series)])
     check_call(['apt-get','update'])
 
-with open('/var/lib/juju/mysql.passwd','r') as rpw:
+with open('/var/lib/mysql/mysql.passwd','r') as rpw:
     root_pass = rpw.read()
 
 dconf = Popen(['debconf-set-selections'], stdin=PIPE)
