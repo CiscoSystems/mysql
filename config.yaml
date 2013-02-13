@@ -33,6 +33,7 @@ options:
         description: If binlogging is enabled, this is the format that will be used. Ignored when tuning-level == fast.
     vip:
         type: string
+        default: None
         description: "Virtual IP to use to front keystone in ha configuration"
     vip_iface:
         type: string
@@ -58,8 +59,8 @@ options:
         type: string
         default: None
         description: |
-          Default block storage type to use when setting up MySQL in HA. Options
-          are 'drbd' or 'ceph'.
+          Default block storage type to use when setting up MySQL in HA. The only
+          option is 'ceph'.
     block-size:
         type: string
         default: 5G
@@ -73,10 +74,3 @@ options:
           The name that will be used to create the Ceph's RBD image with. If the
           image name exists in Ceph, it will be re-used and the data will be
           overwritten.
-    block-device:
-        type: string
-        default: "/dev/sdb1"
-        description: |
-           The *available* block device to use for DRBD. May also be set to None
-           for deployments that will not need local storage (e.g. Ceph/RBD-backed
-           volumes).
