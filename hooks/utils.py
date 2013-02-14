@@ -435,6 +435,14 @@ def eligible_leader():
     return True
 
 
+def is_peered():
+    peers = peer_units()
+    if len(peers) >= 2:
+        juju_log('INFO', 'This unit seems to be peered')
+        return True
+    return False
+
+
 def is_relation_made(relation=None):
     relation_data = []
     for r_id in (relation_ids(relation) or []):

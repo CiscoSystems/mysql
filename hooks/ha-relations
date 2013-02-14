@@ -82,7 +82,7 @@ def ha_relation_joined():
                                 config['rbd-name'], DATA_SRC_DST),
                 'res_mysql_vip':'params ip="%s" cidr_netmask="%s" nic="%s"' % (config['vip'],
                                 config['vip_cidr'], config['vip_iface']),
-                'res_mysqld':'op monitor interval=5s',
+                'res_mysqld':'op start start-delay="5s" op monitor interval="5s"',
             }
 
         groups = {

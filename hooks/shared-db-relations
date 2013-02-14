@@ -16,6 +16,7 @@ import socket
 import os
 import utils
 
+config=json.loads(subprocess.check_output(['config-get','--format=json']))
 
 def pwgen():
     return subprocess.check_output(['pwgen', '-s', '16']).strip()
@@ -73,10 +74,14 @@ def shared_db_changed():
                          remote_ip, password)
         return password
 
-
     if not utils.is_clustered():
-        utils.juju_log('INFO',
-                       'MySQL service is not clustered, continuing shared-db relation')
+        if utils.is_peered():
+            utils.juju_log('INFO',
+                           'MySQL service is peered, bailing shared-db relation')
+            return
+        else:
+            utils.juju_log('INFO',
+                           'MySQL service is not clustered, continuing shared-db relation')
     elif utils.eligible_leader():
         utils.juju_log('INFO',
                        'Cluster leader, continuing shared-db relation')
@@ -98,8 +103,13 @@ def shared_db_changed():
         password = configure_db(settings['hostname'],
                                 settings['database'],
                                 settings['username'])
-        relation_set(db_host=local_hostname,
-                     password=password)
+        if not utils.is_clustered():
+            relation_set(db_host=local_hostname,
+                         password=password)
+        else:
+            relation_set(db_host=config["vip"],
+                         password=password)
+            
     else:
         # Process multiple database setup requests.
         # from incoming relation data:
@@ -134,7 +144,10 @@ def shared_db_changed():
                                  databases[db]['database'],
                                  databases[db]['username'])
         relation_set(**return_data)
-        relation_set(db_host=local_hostname)
+        if not utils.is_clustered():
+           relation_set(db_host=local_hostname)
+        else:
+            relation_set(db_host=config["vip"])
 
 hook = os.path.basename(sys.argv[0])
 hooks = {
