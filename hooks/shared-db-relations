@@ -75,7 +75,7 @@ def shared_db_changed():
         return password
 
     if not utils.is_clustered():
-        if utils.is_peered():
+        if not utils.eligible_leader():
             utils.juju_log('INFO',
                            'MySQL service is peered, bailing shared-db relation')
             return
