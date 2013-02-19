@@ -148,11 +148,12 @@ def ceph_changed():
                                               conf_context))
 
     # Create the images pool if it does not already exist
-    (status, output) = commands.getstatusoutput("rados --id %s lspools" % SERVICE_NAME)
-    pools = "images" in output
-    if not pools:
-        utils.juju_log('INFO','Creating image pool')
-        ceph.create_image_pool(SERVICE_NAME)
+    if utils.eligible_leader():
+        (status, output) = commands.getstatusoutput("rados --id %s lspools" % SERVICE_NAME)
+        pools = "images" in output
+        if not pools:
+            utils.juju_log('INFO','Creating image pool')
+            ceph.create_image_pool(SERVICE_NAME)
 
     # Configure ceph()
     configure_ceph()

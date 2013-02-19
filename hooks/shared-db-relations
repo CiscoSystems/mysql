@@ -74,20 +74,9 @@ def shared_db_changed():
                          remote_ip, password)
         return password
 
-    if not utils.is_clustered():
-        if not utils.eligible_leader():
-            utils.juju_log('INFO',
-                           'MySQL service is peered, bailing shared-db relation')
-            return
-        else:
-            utils.juju_log('INFO',
-                           'MySQL service is not clustered, continuing shared-db relation')
-    elif utils.eligible_leader():
+    if not utils.eligible_leader():
         utils.juju_log('INFO',
-                       'Cluster leader, continuing shared-db relation')
-    else:
-        utils.juju_log('INFO',
-                       'This is not the Cluster leader, bailing shared-db relation...')
+                       'MySQL service is peered, bailing shared-db relation')
         return
 
     settings = relation_get()
