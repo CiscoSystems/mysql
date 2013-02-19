@@ -33,7 +33,6 @@ options:
         description: If binlogging is enabled, this is the format that will be used. Ignored when tuning-level == fast.
     vip:
         type: string
-        default: None
         description: "Virtual IP to use to front keystone in ha configuration"
     vip_iface:
         type: string
@@ -55,12 +54,6 @@ options:
         description: |
           Default multicast port number that will be used to communicate between
           HA Cluster nodes.
-    block-storage:
-        type: string
-        default: None
-        description: |
-          Default block storage type to use when setting up MySQL in HA. The only
-          option is 'ceph'.
     block-size:
         type: string
         default: 5G

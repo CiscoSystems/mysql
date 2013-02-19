@@ -109,7 +109,7 @@ def shared_db_changed():
         else:
             relation_set(db_host=config["vip"],
                          password=password)
-            
+
     else:
         # Process multiple database setup requests.
         # from incoming relation data:
