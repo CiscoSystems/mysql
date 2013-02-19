@@ -350,6 +350,3 @@ if need_restart:
     except CalledProcessError:
         pass
     check_call(['service','mysql','start'])
-
-if configs['block-storage'] == "drbd":
-    utils.install('drbd8-utils')
