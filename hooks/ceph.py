@@ -15,6 +15,13 @@ def execute_shell(cmd):
     subprocess.check_call(cmd, shell=True)
 
 
+def install():
+    ceph_dir = "/etc/ceph"
+    if not os.path.isdir(ceph_dir):
+        os.mkdir(ceph_dir)
+    utils.install('ceph-common')
+
+
 def create_image(service, image, sizemb):
     cmd = [
         'rbd',

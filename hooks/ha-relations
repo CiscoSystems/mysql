@@ -107,12 +107,7 @@ def ha_relation_changed():
 
 def ceph_joined():
     utils.juju_log('INFO', 'Start Ceph Relation Joined')
-
-    ceph_dir = "/etc/ceph"
-    if not os.path.isdir(ceph_dir):
-        os.mkdir(ceph_dir)
-    utils.install('ceph-common')
-
+    ceph.install()
     utils.juju_log('INFO', 'Finish Ceph Relation Joined')
 
 
