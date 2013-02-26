@@ -383,3 +383,64 @@ def get_network_address(iface):
         return str(ip.network)
     else:
         return None
+
+
+def is_clustered():
+    for r_id in (relation_ids('ha') or []):
+        for unit in (relation_list(r_id) or []):
+            relation_data = \
+                relation_get_dict(relation_id=r_id,
+                                  remote_unit=unit)
+            if 'clustered' in relation_data:
+                return True
+    return False
+
+
+def is_leader():
+    status = execute('crm resource show res_mysql_vip', echo=True)[0].strip()
+    hostname = execute('hostname', echo=True)[0].strip()
+    if hostname in status:
+        return True
+    else:
+        return False
+
+
+def peer_units():
+    peers = []
+    for r_id in (relation_ids('cluster') or []):
+        for unit in (relation_list(r_id) or []):
+            peers.append(unit)
+    return peers
+
+
+def oldest_peer(peers):
+    local_unit_no = os.getenv('JUJU_UNIT_NAME').split('/')[1]
+    for peer in peers:
+        remote_unit_no = peer.split('/')[1]
+        if remote_unit_no < local_unit_no:
+            return False
+    return True
+
+
+def eligible_leader():
+    if is_clustered():
+        if not is_leader():
+            juju_log('INFO', 'Deferring action to CRM leader.')
+            return False
+    else:
+        peers = peer_units()
+        if peers and not oldest_peer(peers):
+            juju_log('INFO', 'Deferring action to oldest service unit.')
+            return False
+    return True
+
+
+def is_relation_made(relation=None):
+    relation_data = []
+    for r_id in (relation_ids(relation) or []):
+        for unit in (relation_list(r_id) or []):
+            relation_data.append(relation_get_dict(relation_id=r_id,
+                                 remote_unit=unit))
+    if not relation_data:
+        return False
+    return True

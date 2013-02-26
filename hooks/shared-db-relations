@@ -14,7 +14,9 @@ import subprocess
 import json
 import socket
 import os
+import utils
 
+config=json.loads(subprocess.check_output(['config-get','--format=json']))
 
 def pwgen():
     return subprocess.check_output(['pwgen', '-s', '16']).strip()
@@ -47,7 +49,7 @@ def shared_db_changed():
     def configure_db(hostname,
                      database,
                      username):
-        passwd_file = "/var/lib/juju/mysql-{}.passwd"\
+        passwd_file = "/var/lib/mysql/mysql-{}.passwd"\
                         .format(username)
         if hostname != local_hostname:
             remote_ip = socket.gethostbyname(hostname)
@@ -72,6 +74,11 @@ def shared_db_changed():
                          remote_ip, password)
         return password
 
+    if not utils.eligible_leader():
+        utils.juju_log('INFO',
+                       'MySQL service is peered, bailing shared-db relation')
+        return
+
     settings = relation_get()
     local_hostname = socket.getfqdn()
     singleset = set([ 
@@ -85,8 +92,13 @@ def shared_db_changed():
         password = configure_db(settings['hostname'],
                                 settings['database'],
                                 settings['username'])
-        relation_set(db_host=local_hostname,
-                     password=password)
+        if not utils.is_clustered():
+            relation_set(db_host=local_hostname,
+                         password=password)
+        else:
+            relation_set(db_host=config["vip"],
+                         password=password)
+
     else:
         # Process multiple database setup requests.
         # from incoming relation data:
@@ -121,7 +133,10 @@ def shared_db_changed():
                                  databases[db]['database'],
                                  databases[db]['username'])
         relation_set(**return_data)
-        relation_set(db_host=local_hostname)
+        if not utils.is_clustered():
+           relation_set(db_host=local_hostname)
+        else:
+            relation_set(db_host=config["vip"])
 
 hook = os.path.basename(sys.argv[0])
 hooks = {

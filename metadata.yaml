@@ -28,6 +28,8 @@ peers:
 requires:
   slave:
     interface: mysql-oneway-replication
+  ceph:
+    interface: ceph-client
   ha:
     interface: hacluster
     scope: container

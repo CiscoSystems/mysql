@@ -1,4 +1,4 @@
-MYSQL="mysql -uroot -p`cat /var/lib/juju/mysql.passwd`"
+MYSQL="mysql -uroot -p`cat /var/lib/mysql/mysql.passwd`"
 monitor_user=monitors
 . /usr/share/charm-helper/sh/net.sh
 if [ -n "$JUJU_REMOTE_UNIT" ] ; then
