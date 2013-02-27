@@ -73,11 +73,12 @@ def keyring_path(service):
     return KEYRING % service
 
 def create_keyring(service, key):
+    keyring = keyring_path(service)
     if os.path.exists(keyring):
         utils.juju_log('ceph: Keyring exists at %s.' % keyring)
     cmd = [
         'ceph-authtool',
-        keyring_path(service),
+        keyring,
         '--create-keyring',
         '--name=client.%s' % service,
         '--add-key=%s' % key
@@ -88,7 +89,8 @@ def create_keyring(service, key):
 
 def create_key_file(service, key):
     # create a file containing the key
-    if os.path.exists(keyfile_path(service)):
+    keyfile = keyfile_path(service)
+    if os.path.exists(keyfile):
         utils.juju_log('INFO', 'ceph: Keyfile exists at %s.'  % keyfile)
     fd = open(keyfile, 'w')
     fd.write(key)
