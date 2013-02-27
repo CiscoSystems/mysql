@@ -115,7 +115,7 @@ def configure(service, key, auth):
     keyring = keyring_path(service)
     with open('/etc/ceph/ceph.conf', 'w') as ceph_conf:
         ceph_conf.write(CEPH_CONF % locals())
-    ceph.modprobe_kernel_module('rbd')
+    modprobe_kernel_module('rbd')
 
 
 def image_mapped(image_name):
