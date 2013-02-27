@@ -112,6 +112,7 @@ def configure(service, key, auth):
     create_key_file(service, key)
     hosts = get_ceph_nodes()
     mon_hosts = ",".join(map(str, hosts))
+    keyring = keyring_path(service)
     with open('/etc/ceph/ceph.conf', 'w') as ceph_conf:
         ceph_conf.write(CEPH_CONF % locals())
     ceph.modprobe_kernel_module('rbd')
