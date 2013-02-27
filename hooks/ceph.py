@@ -61,7 +61,7 @@ def create_pool(service, name):
         '--id',
         service,
         'mkpool',
-        pool
+        name
         ]
     execute(cmd)
 
