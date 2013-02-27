@@ -36,7 +36,7 @@ def rbd_exists(service, pool, rbd_img):
     return rbd_img in out
 
 
-def create_rbd_image(service, image, sizemb):
+def create_rbd_image(service, pool, image, sizemb):
     cmd = [
         'rbd',
         'create',
@@ -46,7 +46,7 @@ def create_rbd_image(service, image, sizemb):
         '--id',
         service,
         '--pool',
-        'images'
+        pool
         ]
     execute(cmd)
 
