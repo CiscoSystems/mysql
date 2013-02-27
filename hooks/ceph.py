@@ -52,7 +52,7 @@ def create_rbd_image(service, image, sizemb):
 
 
 def pool_exists(service, name):
-    (rc, out) = commands.getrcout("rados --id %s lspools" % service)
+    (rc, out) = commands.getstatusoutput("rados --id %s lspools" % service)
     return name in out
 
 def create_pool(service, name):
