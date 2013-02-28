@@ -170,7 +170,7 @@ def place_data_on_ceph(service, blk_device, data_src_dst, fstype='ext4'):
     execute(cmd)
 
     # ensure original ownership of new mount.
-    cmd = ['chown', '-R', '%s:%s' % ((uid, gid), data_src_dst)]
+    cmd = ['chown', '-R', '%s:%s' % (uid, gid), data_src_dst]
     execute(cmd)
 
 # TODO: re-use
