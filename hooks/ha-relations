@@ -67,8 +67,8 @@ def ha_relation_joined():
             }
 
         resource_params = {
-                'res_mysql_rbd':'params name="%s" pool="images" user="%s" secret="%s"' % (
-                                config['rbd-name'], SERVICE_NAME, ceph.keyfile_path(SERVICE_NAME)),
+                'res_mysql_rbd':'params name="%s" pool="%s" user="%s" secret="%s"' % (
+                                config['rbd-name'], POOL_NAME, SERVICE_NAME, ceph.keyfile_path(SERVICE_NAME)),
                 'res_mysql_fs':'params device="/dev/rbd/%s/%s" directory="%s" fstype="ext4" op start start-delay="10s"' % (
                                 POOL_NAME, config['rbd-name'], DATA_SRC_DST),
                 'res_mysql_vip':'params ip="%s" cidr_netmask="%s" nic="%s"' % (config['vip'],
