@@ -16,9 +16,6 @@ STORAGEMARKER = '/var/lib/juju/storageconfigured'
 DATA_SRC_DST = '/var/lib/mysql'
 SERVICE_NAME = utils.get_unit_name().replace('-','/').split('/')[0]
 POOL_NAME = SERVICE_NAME
-KEYRING = "/etc/ceph/ceph.client.%s.keyring" % SERVICE_NAME
-KEYFILE = "/etc/ceph/ceph.client.%s.key" % SERVICE_NAME
-
 
 config=json.loads(subprocess.check_output(['config-get','--format=json']))
 
@@ -71,9 +68,9 @@ def ha_relation_joined():
 
         resource_params = {
                 'res_mysql_rbd':'params name="%s" pool="images" user="%s" secret="%s"' % (
-                                config['rbd-name'], SERVICE_NAME, KEYFILE),
-                'res_mysql_fs':'params device="/dev/rbd/images/%s" directory="%s" fstype="ext4" op start start-delay="10s"' % (
-                                config['rbd-name'], DATA_SRC_DST),
+                                config['rbd-name'], SERVICE_NAME, ceph.keyfile_path(SERVICE_NAME)),
+                'res_mysql_fs':'params device="/dev/rbd/%s/%s" directory="%s" fstype="ext4" op start start-delay="10s"' % (
+                                POOL_NAME, config['rbd-name'], DATA_SRC_DST),
                 'res_mysql_vip':'params ip="%s" cidr_netmask="%s" nic="%s"' % (config['vip'],
                                 config['vip_cidr'], config['vip_iface']),
                 'res_mysqld':'op start start-delay="5s" op monitor interval="5s"',
