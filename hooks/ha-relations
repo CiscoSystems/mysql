@@ -14,7 +14,8 @@ STORAGEMARKER = '/var/lib/juju/storageconfigured'
 
 # CEPH
 DATA_SRC_DST = '/var/lib/mysql'
-SERVICE_NAME = utils.get_unit_name().replace('-','/').split('/')[0]
+
+SERVICE_NAME = os.getenv('JUJU_UNIT_NAME').split('/')[0]
 POOL_NAME = SERVICE_NAME
 
 config=json.loads(subprocess.check_output(['config-get','--format=json']))
