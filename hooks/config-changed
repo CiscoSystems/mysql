@@ -7,7 +7,6 @@ import re
 import hashlib
 import os
 import sys
-import utils
 from string import upper
 
 num_re = re.compile('^[0-9]+$')
