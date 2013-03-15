@@ -7,8 +7,6 @@ import lib.utils as utils
 import lib.ceph_utils as ceph
 import lib.cluster_utils as cluster
 
-STORAGEMARKER = '/var/lib/juju/storageconfigured'
-
 # CEPH
 DATA_SRC_DST = '/var/lib/mysql'
 SERVICE_NAME = os.getenv('JUJU_UNIT_NAME').split('/')[0]
