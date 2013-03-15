@@ -56,10 +56,10 @@ options:
           HA Cluster nodes.
     block-size:
         type: string
-        default: 5G
+        default: 5
         description: |
           Default block storage size to create when setting up MySQL block storage.
-          This value should be specified in GB (e.g. 100G).
+          This value should be specified in GB (e.g. 100 not 100GB).
     rbd-name:
         type: string
         default: mysql1

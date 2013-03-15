@@ -1,84 +1,74 @@
 #!/usr/bin/env python
 
-import json
 import sys
-import subprocess
 import os
-import time
-import commands
 
-import utils
-import ceph
+import lib.utils as utils
+import lib.ceph_utils as ceph
+import lib.cluster_utils as cluster
 
 STORAGEMARKER = '/var/lib/juju/storageconfigured'
 
 # CEPH
 DATA_SRC_DST = '/var/lib/mysql'
-
 SERVICE_NAME = os.getenv('JUJU_UNIT_NAME').split('/')[0]
 POOL_NAME = SERVICE_NAME
-
-config=json.loads(subprocess.check_output(['config-get','--format=json']))
+LEADER_RES = 'res_mysql_vip'
 
 
 def ha_relation_joined():
+    vip = utils.config_get('vip')
+    vip_iface = utils.config_get('vip_iface')
+    vip_cidr = utils.config_get('vip_cidr')
+    corosync_bindiface = utils.config_get('ha-bindiface')
+    corosync_mcastport = utils.config_get('ha-mcastport')
 
-    # Checking vip values
-    if not 'vip' in config:
-        utils.juju_log('WARNING', 'NO Virtual IP was defined, bailing')
+    if None in [vip, vip_cidr, vip_iface]:
+        utils.juju_log('WARNING',
+                       'Insufficient VIP information to configure cluster')
         sys.exit(1)
-
-    if config['vip_iface'] == "None" or not config['vip_iface']:
-        utils.juju_log('WARNING', 'NO Virtual IP interface was defined, bailing')
-        sys.exit(1)
-
-    if config['vip_cidr'] == "None" or not config['vip_cidr']:
-        utils.juju_log('WARNING', 'NO CIDR was defined for the Virtual IP, bailing')
-        sys.exit(1)
-
-    # Obtain the config values necessary for the cluster config. These
-    # include multicast port and interface to bind to.
-    corosync_bindiface = config['ha-bindiface']
-    corosync_mcastport = config['ha-mcastport']
 
     # Starting configuring resources.
     init_services = {
-            'res_mysqld':'mysql',
+            'res_mysqld': 'mysql',
         }
 
-
     # If the 'ha' relation has been made *before* the 'ceph' relation,
-    # it doesn't make sense to make it until after the 'ceph' relation
-    # is made
-    if not utils.is_relation_made('ceph'):
+    # it doesn't make sense to make it until after the 'ceph' relation is made
+    if not is_relation_made('ceph', 'auth'):
         utils.juju_log('INFO',
-                '*ceph* relation does not exist. Not sending *ha* relation data')
+                       '*ceph* relation does not exist. '
+                       'Not sending *ha* relation data yet')
         return
     else:
         utils.juju_log('INFO',
-                    '*ceph* relation exists. Sending *ha* relation data')
+                       '*ceph* relation exists. Sending *ha* relation data')
 
         block_storage = 'ceph'
 
         resources = {
-                'res_mysql_rbd':'ocf:ceph:rbd',
-                'res_mysql_fs':'ocf:heartbeat:Filesystem',
-                'res_mysql_vip':'ocf:heartbeat:IPaddr2',
-                'res_mysqld':'upstart:mysql',
+            'res_mysql_rbd': 'ocf:ceph:rbd',
+            'res_mysql_fs': 'ocf:heartbeat:Filesystem',
+            'res_mysql_vip': 'ocf:heartbeat:IPaddr2',
+            'res_mysqld': 'upstart:mysql',
             }
 
+        rbd_name = utils.config_get('rbd-name')
         resource_params = {
-                'res_mysql_rbd':'params name="%s" pool="%s" user="%s" secret="%s"' % (
-                                config['rbd-name'], POOL_NAME, SERVICE_NAME, ceph.keyfile_path(SERVICE_NAME)),
-                'res_mysql_fs':'params device="/dev/rbd/%s/%s" directory="%s" fstype="ext4" op start start-delay="10s"' % (
-                                POOL_NAME, config['rbd-name'], DATA_SRC_DST),
-                'res_mysql_vip':'params ip="%s" cidr_netmask="%s" nic="%s"' % (config['vip'],
-                                config['vip_cidr'], config['vip_iface']),
-                'res_mysqld':'op start start-delay="5s" op monitor interval="5s"',
+            'res_mysql_rbd': 'params name="%s" pool="%s" user="%s" '
+                             'secret="%s"' % \
+                             (rbd_name, POOL_NAME,
+                              SERVICE_NAME, ceph.keyfile_path(SERVICE_NAME)),
+            'res_mysql_fs': 'params device="/dev/rbd/%s/%s" directory="%s" '
+                            'fstype="ext4" op start start-delay="10s"' % \
+                            (POOL_NAME, rbd_name, DATA_SRC_DST),
+            'res_mysql_vip': 'params ip="%s" cidr_netmask="%s" nic="%s"' % \
+                             (vip, vip_cidr, vip_iface),
+            'res_mysqld': 'op start start-delay="5s" op monitor interval="5s"',
             }
 
         groups = {
-                'grp_mysql':'res_mysql_rbd res_mysql_fs res_mysql_vip res_mysqld',
+            'grp_mysql': 'res_mysql_rbd res_mysql_fs res_mysql_vip res_mysqld',
             }
 
         for rel_id in utils.relation_ids('ha'):
@@ -93,15 +83,13 @@ def ha_relation_joined():
 
 
 def ha_relation_changed():
-    relation_data = utils.relation_get_dict()
-    if ('clustered' in relation_data and
-        utils.is_leader()):
+    clustered = utils.relation_get('clustered')
+    if (clustered and cluster.is_leader(LEADER_RES)):
         utils.juju_log('INFO', 'Cluster configured, notifying other services')
-        # Tell all related services to start using
-        # the VIP
+        # Tell all related services to start using the VIP
         for r_id in utils.relation_ids('shared-db'):
             utils.relation_set(rid=r_id,
-                           db_host=config['vip'])
+                               db_host=utils.config_get('vip'))
 
 
 def ceph_joined():
@@ -112,21 +100,17 @@ def ceph_joined():
 
 def ceph_changed():
     utils.juju_log('INFO', 'Start Ceph Relation Changed')
-
-    # TODO: ask james: What happens if the relation data has changed?
-    # do we reconfigure ceph? What do we do with the data?
     auth = utils.relation_get('auth')
     key = utils.relation_get('key')
     if None in [auth, key]:
         utils.juju_log('INFO', 'Missing key or auth in relation')
-        sys.exit(0)
-
+        return
 
     ceph.configure(service=SERVICE_NAME, key=key, auth=auth)
 
-    if utils.eligible_leader():
-        sizemb = int(config['block-size'].split('G')[0]) * 1024
-        rbd_img = config['rbd-name']
+    if cluster.eligible_leader(LEADER_RES):
+        sizemb = int(utils.config_get('block-size')) * 1024
+        rbd_img = utils.config_get('rbd-name')
         blk_device = '/dev/rbd/%s/%s' % (POOL_NAME, rbd_img)
         ceph.ensure_ceph_storage(service=SERVICE_NAME, pool=POOL_NAME,
                                  rbd_img=rbd_img, sizemb=sizemb,
@@ -138,21 +122,18 @@ def ceph_changed():
                        'This is not the peer leader. Not configuring RBD.')
         # Stopping MySQL
         if utils.running('mysql'):
-            utils.juju_log('INFO','Stopping MySQL...')
+            utils.juju_log('INFO', 'Stopping MySQL...')
             utils.stop('mysql')
-
 
     # If 'ha' relation has been made before the 'ceph' relation
     # it is important to make sure the ha-relation data is being
     # sent.
-    if utils.is_relation_made('ha'):
+    if is_relation_made('ha'):
         utils.juju_log('INFO',
-                       '*ha* relation exists. Making sure the ha relation data is sent.')
+                       '*ha* relation exists. Making sure the ha'
+                       ' relation data is sent.')
         ha_relation_joined()
         return
-    else:
-        utils.juju_log('INFO',
-                       '*ha* relation does not exist.')
 
     utils.juju_log('INFO', 'Finish Ceph Relation Changed')
 
@@ -160,11 +141,23 @@ def ceph_changed():
 def cluster_changed():
     utils.juju_log('INFO', 'Begin cluster changed hook.')
 
-    if config['block-size'] == "None":
+    if utils.config_get('block-size') == "None":
         utils.juju_log('WARNING', 'NO block storage size configured, bailing')
         return
 
     utils.juju_log('INFO', 'End install hook.')
+
+
+def is_relation_made(relation, key='private-address'):
+    relation_data = []
+    for r_id in (utils.relation_ids(relation) or []):
+        for unit in (utils.relation_list(r_id) or []):
+            relation_data.append(utils.relation_get(key,
+                                                    rid=r_id,
+                                                    unit=unit))
+    if not relation_data:
+        return False
+    return True
 
 
 hooks = {
@@ -175,9 +168,4 @@ hooks = {
     "ceph-relation-changed": ceph_changed,
 }
 
-# keystone-hooks gets called by symlink corresponding to the requested relation
-# hook.
-arg0 = sys.argv[0].split("/").pop()
-if arg0 not in hooks.keys():
-    error_out("Unsupported hook: %s" % arg0)
-hooks[arg0]()
+utils.do_hooks(hooks)
