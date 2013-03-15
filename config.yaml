@@ -55,7 +55,7 @@ options:
           Default multicast port number that will be used to communicate between
           HA Cluster nodes.
     block-size:
-        type: string
+        type: int
         default: 5
         description: |
           Default block storage size to create when setting up MySQL block storage.
