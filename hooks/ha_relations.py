@@ -138,16 +138,6 @@ def ceph_changed():
     utils.juju_log('INFO', 'Finish Ceph Relation Changed')
 
 
-def cluster_changed():
-    utils.juju_log('INFO', 'Begin cluster changed hook.')
-
-    if utils.config_get('block-size') == "None":
-        utils.juju_log('WARNING', 'NO block storage size configured, bailing')
-        return
-
-    utils.juju_log('INFO', 'End install hook.')
-
-
 def is_relation_made(relation, key='private-address'):
     relation_data = []
     for r_id in (utils.relation_ids(relation) or []):
@@ -161,7 +151,6 @@ def is_relation_made(relation, key='private-address'):
 
 
 hooks = {
-    "cluster-relation-changed": cluster_changed,
     "ha-relation-joined": ha_relation_joined,
     "ha-relation-changed": ha_relation_changed,
     "ceph-relation-joined": ceph_joined,
