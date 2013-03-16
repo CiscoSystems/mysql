@@ -1,10 +1,12 @@
-
 #
 # Copyright 2012 Canonical Ltd.
+#
+# This file is sourced from lp:openstack-charm-helpers
 #
 # Authors:
 #  James Page <james.page@ubuntu.com>
 #  Paul Collins <paul.collins@canonical.com>
+#  Adam Gandelman <adamg@ubuntu.com>
 #
 
 import json

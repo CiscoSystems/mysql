@@ -1,3 +1,13 @@
+#
+# Copyright 2012 Canonical Ltd.
+#
+# This file is sourced from lp:openstack-charm-helpers
+#
+# Authors:
+#  James Page <james.page@ubuntu.com>
+#  Adam Gandelman <adamg@ubuntu.com>
+#
+
 import commands
 import subprocess
 import os
