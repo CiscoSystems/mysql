@@ -33,7 +33,7 @@ def ha_relation_joined():
 
     # If the 'ha' relation has been made *before* the 'ceph' relation,
     # it doesn't make sense to make it until after the 'ceph' relation is made
-    if not is_relation_made('ceph', 'auth'):
+    if not utils.is_relation_made('ceph', 'auth'):
         utils.juju_log('INFO',
                        '*ceph* relation does not exist. '
                        'Not sending *ha* relation data yet')
@@ -126,7 +126,7 @@ def ceph_changed():
     # If 'ha' relation has been made before the 'ceph' relation
     # it is important to make sure the ha-relation data is being
     # sent.
-    if is_relation_made('ha'):
+    if utils.is_relation_made('ha'):
         utils.juju_log('INFO',
                        '*ha* relation exists. Making sure the ha'
                        ' relation data is sent.')
@@ -134,18 +134,6 @@ def ceph_changed():
         return
 
     utils.juju_log('INFO', 'Finish Ceph Relation Changed')
-
-
-def is_relation_made(relation, key='private-address'):
-    relation_data = []
-    for r_id in (utils.relation_ids(relation) or []):
-        for unit in (utils.relation_list(r_id) or []):
-            relation_data.append(utils.relation_get(key,
-                                                    rid=r_id,
-                                                    unit=unit))
-    if not relation_data:
-        return False
-    return True
 
 
 hooks = {

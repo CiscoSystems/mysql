@@ -273,3 +273,15 @@ def running(service):
             return True
         else:
             return False
+
+
+def is_relation_made(relation, key='private-address'):
+    relation_data = []
+    for r_id in (relation_ids(relation) or []):
+        for unit in (relation_list(r_id) or []):
+            relation_data.append(relation_get(key,
+                                              rid=r_id,
+                                              unit=unit))
+    if not relation_data:
+        return False
+    return True
