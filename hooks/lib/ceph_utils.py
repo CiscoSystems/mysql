@@ -1,10 +1,18 @@
-import utils
+#
+# Copyright 2012 Canonical Ltd.
+#
+# This file is sourced from lp:openstack-charm-helpers
+#
+# Authors:
+#  James Page <james.page@ubuntu.com>
+#  Adam Gandelman <adamg@ubuntu.com>
+#
+
 import commands
-import re
 import subprocess
-import sys
 import os
 import shutil
+import lib.utils as utils
 
 KEYRING = '/etc/ceph/ceph.client.%s.keyring'
 KEYFILE = '/etc/ceph/ceph.client.%s.key'
@@ -14,6 +22,7 @@ CEPH_CONF = """[global]
  keyring = %(keyring)s
  mon host = %(mon_hosts)s
 """
+
 
 def execute(cmd):
     subprocess.check_call(cmd)
@@ -55,6 +64,7 @@ def pool_exists(service, name):
     (rc, out) = commands.getstatusoutput("rados --id %s lspools" % service)
     return name in out
 
+
 def create_pool(service, name):
     cmd = [
         'rados',
@@ -69,8 +79,10 @@ def create_pool(service, name):
 def keyfile_path(service):
     return KEYFILE % service
 
+
 def keyring_path(service):
     return KEYRING % service
+
 
 def create_keyring(service, key):
     keyring = keyring_path(service)
@@ -91,11 +103,11 @@ def create_key_file(service, key):
     # create a file containing the key
     keyfile = keyfile_path(service)
     if os.path.exists(keyfile):
-        utils.juju_log('INFO', 'ceph: Keyfile exists at %s.'  % keyfile)
+        utils.juju_log('INFO', 'ceph: Keyfile exists at %s.' % keyfile)
     fd = open(keyfile, 'w')
     fd.write(key)
     fd.close()
-    utils.juju_log('INFO', 'ceph: Created new keyfile at %s.'  % keyfile)
+    utils.juju_log('INFO', 'ceph: Created new keyfile at %s.' % keyfile)
 
 
 def get_ceph_nodes():
@@ -122,6 +134,7 @@ def image_mapped(image_name):
     (rc, out) = commands.getstatusoutput('rbd showmapped')
     return image_name in out
 
+
 def map_block_storage(service, pool, image):
     cmd = [
         'rbd',
@@ -137,6 +150,7 @@ def map_block_storage(service, pool, image):
 
 def filesystem_mounted(fs):
     return subprocess.call(['grep', '-wqs', fs, '/proc/mounts']) == 0
+
 
 def make_filesystem(blk_device, fstype='ext4'):
     utils.juju_log('INFO',
@@ -173,9 +187,10 @@ def place_data_on_ceph(service, blk_device, data_src_dst, fstype='ext4'):
     cmd = ['chown', '-R', '%s:%s' % (uid, gid), data_src_dst]
     execute(cmd)
 
+
 # TODO: re-use
 def modprobe_kernel_module(module):
-    utils.juju_log('INFO','Loading kernel module')
+    utils.juju_log('INFO', 'Loading kernel module')
     cmd = ['modprobe', module]
     execute(cmd)
     cmd = 'echo %s >> /etc/modules' % module
@@ -190,6 +205,7 @@ def copy_files(src, dst, symlinks=False, ignore=None):
             shutil.copytree(s, d, symlinks, ignore)
         else:
             shutil.copy2(s, d)
+
 
 def ensure_ceph_storage(service, pool, rbd_img, sizemb, mount_point,
                         blk_device, fstype, system_services=[]):
