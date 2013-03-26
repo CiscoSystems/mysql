@@ -1,0 +1,7 @@
+#!/bin/bash -e
+# ensure this host is present in a CRM config and has access to crm tools.
+#
+# Since mysql service isn't running on the secondary/passive node, we have no
+# other easy means for determining the health of the mysql service until this
+# node becomes the active leader for the HA service.
+crm status 2>/dev/null | grep -q `hostname`
