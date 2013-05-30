@@ -8,16 +8,24 @@
 # Author: Adam Gandelman <adam.gandelman@canonical.com>
 
 
-from common import *
-import sys
+from common import (
+    database_exists,
+    create_database,
+    grant_exists,
+    create_grant
+    )
 import subprocess
 import json
 import socket
 import os
+import lib.utils as utils
+import lib.cluster_utils as cluster
+
+LEADER_RES = 'res_mysql_vip'
 
 
 def pwgen():
-    return subprocess.check_output(['pwgen', '-s', '16']).strip()
+    return str(subprocess.check_output(['pwgen', '-s', '16'])).strip()
 
 
 def relation_get():
@@ -29,25 +37,12 @@ def relation_get():
                       )
 
 
-def relation_set(**kwargs):
-    cmd = [ 'relation-set' ]
-    args = []
-    for k, v in kwargs.items():
-        if k == 'rid':
-            cmd.append('-r')
-            cmd.append(v)
-        else:
-            args.append('{}={}'.format(k, v))
-    cmd += args
-    subprocess.check_call(cmd)
-
-
 def shared_db_changed():
 
     def configure_db(hostname,
                      database,
                      username):
-        passwd_file = "/var/lib/juju/mysql-{}.passwd"\
+        passwd_file = "/var/lib/mysql/mysql-{}.passwd"\
                         .format(username)
         if hostname != local_hostname:
             remote_ip = socket.gethostbyname(hostname)
@@ -72,9 +67,15 @@ def shared_db_changed():
                          remote_ip, password)
         return password
 
+    if not cluster.eligible_leader(LEADER_RES):
+        utils.juju_log('INFO',
+                       'MySQL service is peered, bailing shared-db relation'
+                       ' as this service unit is not the leader')
+        return
+
     settings = relation_get()
     local_hostname = socket.getfqdn()
-    singleset = set([ 
+    singleset = set([
         'database',
         'username',
         'hostname'
@@ -85,8 +86,13 @@ def shared_db_changed():
         password = configure_db(settings['hostname'],
                                 settings['database'],
                                 settings['username'])
-        relation_set(db_host=local_hostname,
-                     password=password)
+        if not cluster.is_clustered():
+            utils.relation_set(db_host=local_hostname,
+                               password=password)
+        else:
+            utils.relation_set(db_host=utils.config_get("vip"),
+                               password=password)
+
     else:
         # Process multiple database setup requests.
         # from incoming relation data:
@@ -116,22 +122,18 @@ def shared_db_changed():
         return_data = {}
         for db in databases:
             if singleset.issubset(databases[db]):
-                return_data['_'.join([ db, 'password' ])] = \
+                return_data['_'.join([db, 'password'])] = \
                     configure_db(databases[db]['hostname'],
                                  databases[db]['database'],
                                  databases[db]['username'])
-        relation_set(**return_data)
-        relation_set(db_host=local_hostname)
+        utils.relation_set(**return_data)
+        if not cluster.is_clustered():
+            utils.relation_set(db_host=local_hostname)
+        else:
+            utils.relation_set(db_host=utils.config_get("vip"))
 
-hook = os.path.basename(sys.argv[0])
 hooks = {
     "shared-db-relation-changed": shared_db_changed
     }
-try:
-    hook_func = hooks[hook]
-except KeyError:
-    pass
-else:
-    hook_func()
 
-sys.exit(0)
+utils.do_hooks(hooks)

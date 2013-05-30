@@ -6,7 +6,7 @@ set -e
 
 . /usr/share/charm-helper/sh/net.sh
 
-ROOTARGS="-uroot -p`cat /var/lib/juju/mysql.passwd`"
+ROOTARGS="-uroot -p`cat /var/lib/mysql/mysql.passwd`"
 snapdir=/var/www/snaps
 mkdir -p $snapdir
 apt-get -y install apache2

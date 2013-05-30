@@ -2,7 +2,7 @@
 
 set -e
 
-ROOTARGS="-uroot -p`cat /var/lib/juju/mysql.passwd`"
+ROOTARGS="-uroot -p`cat /var/lib/mysql/mysql.passwd`"
 
 # Others can join that service but only the lowest will be the master
 # Note that we could be more automatic but for now we will wait for
@@ -39,7 +39,7 @@ echo Importing $dumpurl into MySQL
 curl --silent --show-error $dumpurl |zcat| mysql $ROOTARGS
 # Root pw gets overwritten by import
 echo Re-setting Root Pasword -- can use ours because it hasnt been flushed
-myrootpw=`cat /var/lib/juju/mysql.passwd`
+myrootpw=`cat /var/lib/mysql/mysql.passwd`
 mysqladmin -uroot -p$myrootpw password $myrootpw
 # Debian packages expect debian-sys-maint@localhost to be root privileged and
 # configured in /etc/mysql/debian.cnf. we just broke that.. fix it

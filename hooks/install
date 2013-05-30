@@ -3,8 +3,9 @@
 apt-get update
 apt-get install -y debconf-utils python-mysqldb uuid pwgen dnsutils charm-helper-sh || exit 1
 
-PASSFILE=/var/lib/juju/mysql.passwd
+PASSFILE=/var/lib/mysql/mysql.passwd
 if ! [ -f $PASSFILE ] ; then
+  mkdir -p /var/lib/mysql
   touch $PASSFILE
 fi
 chmod 0600 $PASSFILE
