@@ -18,11 +18,11 @@ for r in $(relation-ids master) ; do
         rhost=$(relation-get -r $r hostname $runit)
         if [ -n "$rhost" ] ; then
             rhosts=${rhosts},$rhost
-        fi
-        if [ "$runit" = "$JUJU_REMOTE_UNIT" ] ; then
-            remote_ip=$rhost
-            if ! ch_is_ip $remote_ip ; then
-                remote_ip=$(ch_get_ip $remote_ip)
+            if [ "$runit" = "$JUJU_REMOTE_UNIT" ] ; then
+                remote_ip=$rhost
+                if ! ch_is_ip $remote_ip ; then
+                    remote_ip=$(ch_get_ip $remote_ip)
+                fi
             fi
         fi
     done
