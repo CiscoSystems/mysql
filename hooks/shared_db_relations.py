@@ -74,7 +74,7 @@ def shared_db_changed():
         return
 
     settings = relation_get()
-    local_hostname = socket.getfqdn()
+    local_hostname = utils.unit_get('private-address')
     singleset = set([
         'database',
         'username',
