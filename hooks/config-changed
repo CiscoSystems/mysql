@@ -7,6 +7,7 @@ import re
 import hashlib
 import os
 import sys
+import platform
 from string import upper
 
 num_re = re.compile('^[0-9]+$')
@@ -38,7 +39,11 @@ try:
     IS_32BIT_SYSTEM = sys.maxsize < 2**32
 except OverflowError:
     IS_32BIT_SYSTEM = True
-SYS_MEM_LIMIT = human_to_bytes('4G')
+
+if platform.machine() in ['armv7l']:
+    SYS_MEM_LIMIT = human_to_bytes('2700M') # experimentally determined
+else:
+    SYS_MEM_LIMIT = human_to_bytes('4G')
 
 if IS_32BIT_SYSTEM:
     check_call(['juju-log','-l','INFO','32bit system restrictions in play'])
