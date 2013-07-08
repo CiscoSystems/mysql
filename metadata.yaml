@@ -6,7 +6,8 @@ description: |
   server. SQL (Structured Query Language) is the most popular database query
   language in the world. The main goals of MySQL are speed, robustness and
   ease of use.
-category: ["databases"]
+categories:
+    - databases
 provides:
   db:
     interface: mysql
