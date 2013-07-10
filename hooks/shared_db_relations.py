@@ -126,7 +126,8 @@ def shared_db_changed():
                     configure_db(databases[db]['hostname'],
                                  databases[db]['database'],
                                  databases[db]['username'])
-        utils.relation_set(**return_data)
+        if len(return_data) > 0:
+            utils.relation_set(**return_data)
         if not cluster.is_clustered():
             utils.relation_set(db_host=local_hostname)
         else:
