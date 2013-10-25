@@ -20,12 +20,12 @@ To deploy a MySQL service:
 
     juju deploy mysql
 
-Once deployed, you can ssh into the deployed service and access the
-MySQL console as the MySQL root user:
+Once deployed, you can retrive the MySQL root user password by logging in to the machine via `juju ssh`
+and readin the `/var/lib/mysql/mysql.passwd` file. To log in as root MySQL User at the MySQL console
+you can issue the following:
 
-    juju ssh <unit>
-    mysql -u root -p
-    # enter root password - /var/lib/juju/mysql.passwd
+    juju ssh mysql/0
+    mysql -u root -p=`cat /var/lib/mysql/mysql.passwd`
 
 To change deployment to a Percona server:
 
