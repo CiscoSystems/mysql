@@ -1,8 +1,5 @@
 #!/bin/bash
 
-apt-get update
-apt-get install -y debconf-utils python-mysqldb uuid pwgen dnsutils charm-helper-sh || exit 1
-
 # Pre-exec
 if [[ -d exec.d ]]; then
     shopt -s nullglob
@@ -15,6 +12,9 @@ if [[ -d exec.d ]]; then
     }
     done
 fi
+
+apt-get update
+apt-get install -y debconf-utils python-mysqldb uuid pwgen dnsutils charm-helper-sh || exit 1
 
 PASSFILE=/var/lib/mysql/mysql.passwd
 if ! [ -f $PASSFILE ] ; then
